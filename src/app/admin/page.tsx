@@ -473,6 +473,7 @@ export default function AdminDashboard() {
                   endTime,
                   hourlyRate: caregiver.hourlyRate || 0,
                   isPaid: false,
+                  status: 'completed',
                 };
                 MockService.saveShift(newShift);
                 refreshData();
