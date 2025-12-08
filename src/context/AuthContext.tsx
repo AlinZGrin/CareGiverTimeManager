@@ -28,9 +28,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Input password:', password);
     
     try {
-      // ALWAYS use localStorage for login - it's fast and reliable
-      const users = MockService.getUsers();
-      console.log('Users from localStorage:', users.length);
+      // Use Firebase for login to ensure cross-browser authentication
+      const users = await MockService.getUsersAsync();
+      console.log('Users from Firebase:', users.length);
       console.log('All users:', JSON.stringify(users, null, 2));
       
       users.forEach(u => {
@@ -69,9 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Input pin:', pin);
     
     try {
-      // ALWAYS use localStorage for login - it's fast and reliable
-      const users = MockService.getUsers();
-      console.log('Users from localStorage:', users.length);
+      // Use Firebase for login to ensure cross-browser authentication
+      const users = await MockService.getUsersAsync();
+      console.log('Users from Firebase:', users.length);
       
       users.forEach(u => {
         if (u.role === 'caregiver') {
