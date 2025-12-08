@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Caregiver Time Manager",
   description: "Track time and manage payroll for home health aides",
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({
