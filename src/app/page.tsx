@@ -170,12 +170,6 @@ export default function LoginPage() {
             Forgot {isCaregiver ? 'Phone/PIN' : 'Email/Password'}?
           </button>
         </form>
-        
-        <div className="mt-4 text-center text-xs text-gray-500">
-          <p>Demo Credentials:</p>
-          <p>Caregiver: 5551234 / 1234</p>
-          <p>Admin: admin@example.com / password123</p>
-        </div>
       </div>
 
       {/* Forgot Credentials Modal */}
