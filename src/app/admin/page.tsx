@@ -182,39 +182,41 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="flex-1 container mx-auto p-6">
-        {/* Tabs */}
-        <div className="flex space-x-4 mb-6 border-b border-gray-200">
-          <button
-            className={`pb-2 px-4 ${activeTab === 'dashboard' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            Overview
-          </button>
-          <button
-            className={`pb-2 px-4 ${activeTab === 'schedule' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
-            onClick={() => setActiveTab('schedule')}
-          >
-            Schedule
-          </button>
-          <button
-            className={`pb-2 px-4 ${activeTab === 'caregivers' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
-            onClick={() => setActiveTab('caregivers')}
-          >
-            Caregivers
-          </button>
-          <button
-            className={`pb-2 px-4 ${activeTab === 'shifts' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
-            onClick={() => setActiveTab('shifts')}
-          >
-            Shifts & Payroll
-          </button>
-          <button
-            className={`pb-2 px-4 ${activeTab === 'settings' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            Settings
-          </button>
+      <div className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
+        {/* Tabs - Scrollable on mobile */}
+        <div className="mb-6 border-b border-gray-200 overflow-x-auto">
+          <div className="flex space-x-2 md:space-x-4 whitespace-nowrap">
+            <button
+              className={`pb-2 px-2 md:px-4 text-sm md:text-base ${activeTab === 'dashboard' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              Overview
+            </button>
+            <button
+              className={`pb-2 px-2 md:px-4 text-sm md:text-base ${activeTab === 'schedule' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('schedule')}
+            >
+              Schedule
+            </button>
+            <button
+              className={`pb-2 px-2 md:px-4 text-sm md:text-base ${activeTab === 'caregivers' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('caregivers')}
+            >
+              Caregivers
+            </button>
+            <button
+              className={`pb-2 px-2 md:px-4 text-sm md:text-base ${activeTab === 'shifts' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('shifts')}
+            >
+              Shifts & Payroll
+            </button>
+            <button
+              className={`pb-2 px-2 md:px-4 text-sm md:text-base ${activeTab === 'settings' ? 'border-b-2 border-blue-500 text-blue-600 font-bold' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              Settings
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -249,7 +251,7 @@ export default function AdminDashboard() {
                   name="date" 
                   type="date" 
                   required 
-                  className="border p-2 rounded"
+                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   min={new Date().toISOString().split('T')[0]}
                   defaultValue={editingShift ? editingShift.date : ''}
                 />
@@ -257,7 +259,7 @@ export default function AdminDashboard() {
                   name="startTime" 
                   type="time" 
                   required 
-                  className="border p-2 rounded" 
+                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
                   placeholder="Start Time"
                   defaultValue={editingShift ? new Date(editingShift.scheduledStartTime).toTimeString().slice(0, 5) : ''}
                 />
@@ -265,7 +267,7 @@ export default function AdminDashboard() {
                   name="endTime" 
                   type="time" 
                   required 
-                  className="border p-2 rounded" 
+                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
                   placeholder="End Time"
                   defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toTimeString().slice(0, 5) : ''}
                 />
@@ -273,7 +275,7 @@ export default function AdminDashboard() {
                   name="shiftName" 
                   type="text" 
                   placeholder="Shift Name (optional)" 
-                  className="border p-2 rounded"
+                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   defaultValue={editingShift ? editingShift.shiftName || '' : ''}
                 />
                 <div className="flex gap-2">
@@ -364,10 +366,10 @@ export default function AdminDashboard() {
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold mb-4">Add New Caregiver</h3>
               <form onSubmit={handleAddCaregiver} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input name="name" placeholder="Name" required className="border p-2 rounded" />
-                <input name="phone" placeholder="Phone" required className="border p-2 rounded" />
-                <input name="pin" placeholder="PIN (4 digits)" maxLength={4} required className="border p-2 rounded" />
-                <input name="rate" type="number" step="0.01" placeholder="Hourly Rate ($)" required className="border p-2 rounded" />
+                <input name="name" placeholder="Name" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="phone" placeholder="Phone" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="pin" placeholder="PIN (4 digits)" maxLength={4} required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="rate" type="number" step="0.01" placeholder="Hourly Rate ($)" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 <button type="submit" className="bg-blue-600 text-white p-2 rounded md:col-span-4">Add Caregiver</button>
               </form>
             </div>
@@ -483,14 +485,14 @@ export default function AdminDashboard() {
                 refreshData();
                 (e.target as HTMLFormElement).reset();
               }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <select name="caregiverId" required className="border p-2 rounded">
+                <select name="caregiverId" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                   <option value="">Select Caregiver</option>
                   {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <input name="date" type="date" required className="border p-2 rounded" />
-                <input name="start" type="time" required className="border p-2 rounded" />
-                <input name="end" type="time" required className="border p-2 rounded" />
-                <button type="submit" className="bg-blue-600 text-white p-2 rounded">Add Shift</button>
+                <input name="date" type="date" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="start" type="time" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="end" type="time" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <button type="submit" className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Add Shift</button>
               </form>
             </div>
 

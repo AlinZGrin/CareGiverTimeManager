@@ -201,12 +201,12 @@ export default function CaregiverDashboard() {
         <button onClick={logout} className="text-sm text-red-600 font-medium">Logout</button>
       </header>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200 px-4">
-        <div className="flex space-x-4">
+      {/* Navigation Tabs - Scrollable on mobile */}
+      <div className="bg-white border-b border-gray-200 px-4 overflow-x-auto">
+        <div className="flex space-x-2 md:space-x-4 whitespace-nowrap">
           <button
             onClick={() => setActiveView('clock')}
-            className={`py-3 px-4 font-medium ${
+            className={`py-3 px-3 md:px-4 font-medium text-sm md:text-base ${
               activeView === 'clock' 
                 ? 'border-b-2 border-blue-500 text-blue-600' 
                 : 'text-gray-500'
@@ -216,7 +216,7 @@ export default function CaregiverDashboard() {
           </button>
           <button
             onClick={() => setActiveView('schedule')}
-            className={`py-3 px-4 font-medium ${
+            className={`py-3 px-3 md:px-4 font-medium text-sm md:text-base ${
               activeView === 'schedule' 
                 ? 'border-b-2 border-blue-500 text-blue-600' 
                 : 'text-gray-500'
@@ -226,7 +226,7 @@ export default function CaregiverDashboard() {
           </button>
           <button
             onClick={() => setActiveView('settings')}
-            className={`py-3 px-4 font-medium ${
+            className={`py-3 px-3 md:px-4 font-medium text-sm md:text-base ${
               activeView === 'settings' 
                 ? 'border-b-2 border-blue-500 text-blue-600' 
                 : 'text-gray-500'
@@ -434,7 +434,7 @@ export default function CaregiverDashboard() {
                       name="phone"
                       defaultValue={user.phone}
                       required
-                      className="w-full border p-2 rounded"
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">This is your login username</p>
                   </div>
@@ -451,7 +451,7 @@ export default function CaregiverDashboard() {
                         name="currentPin"
                         maxLength={4}
                         required
-                        className="w-full border p-2 rounded"
+                        className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder="Enter current PIN"
                       />
                     </div>
@@ -465,7 +465,7 @@ export default function CaregiverDashboard() {
                         name="newPin"
                         maxLength={4}
                         pattern="\d{4}"
-                        className="w-full border p-2 rounded"
+                        className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder="Enter new 4-digit PIN"
                       />
                       <p className="text-xs text-gray-500 mt-1">Must be exactly 4 digits</p>
@@ -480,7 +480,7 @@ export default function CaregiverDashboard() {
                         name="confirmPin"
                         maxLength={4}
                         pattern="\d{4}"
-                        className="w-full border p-2 rounded"
+                        className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder="Re-enter new PIN"
                       />
                     </div>
