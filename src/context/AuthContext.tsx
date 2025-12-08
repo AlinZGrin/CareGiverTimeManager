@@ -28,19 +28,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Input password:', password);
     
     try {
-      // First try localStorage (instant, reliable)
-      let users = MockService.getUsers();
+      // ALWAYS use localStorage for login - it's fast and reliable
+      const users = MockService.getUsers();
       console.log('Users from localStorage:', users.length);
       console.log('All users:', JSON.stringify(users, null, 2));
       
-      // If no users in localStorage, try async Firebase
-      if (users.length === 0) {
-        console.log('No users in localStorage, fetching from Firebase...');
-        users = await MockService.getUsersAsync();
-        console.log('Users from Firebase:', users.length);
-      }
-      
-      console.log('Users available for validation:', users.length);
       users.forEach(u => {
         if (u.role === 'admin') {
           console.log('Admin user found:', {
@@ -63,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       console.log('✗ Admin login failed - no match found');
+      console.log('Available admin users:', users.filter(u => u.role === 'admin'));
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -76,18 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Input pin:', pin);
     
     try {
-      // First try localStorage (instant, reliable)
-      let users = MockService.getUsers();
+      // ALWAYS use localStorage for login - it's fast and reliable
+      const users = MockService.getUsers();
       console.log('Users from localStorage:', users.length);
       
-      // If no users in localStorage, try async Firebase
-      if (users.length === 0) {
-        console.log('No users in localStorage, fetching from Firebase...');
-        users = await MockService.getUsersAsync();
-        console.log('Users from Firebase:', users.length);
-      }
-      
-      console.log('Users available for validation:', users.length);
       users.forEach(u => {
         if (u.role === 'caregiver') {
           console.log('Caregiver user found:', {
@@ -111,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       console.log('✗ Caregiver login failed - no match found');
+      console.log('Available caregivers:', users.filter(u => u.role === 'caregiver'));
       return false;
     } catch (error) {
       console.error('Login error:', error);

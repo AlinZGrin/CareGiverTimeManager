@@ -99,27 +99,27 @@ export const MockService = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure admin user is always present
+          const hasAdmin = parsed.some(u => u.role === 'admin');
+          if (!hasAdmin) {
+            console.warn('Admin user missing from cache, restoring defaults');
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+            return INITIAL_USERS;
+          }
           return parsed;
         }
       }
       
-      // If no valid data exists, initialize with defaults (for first-time setup)
-      const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
-      if (!isInitialized) {
-        console.log('First time setup - initializing with default users');
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-        return INITIAL_USERS;
-      }
-      
-      // If initialized but data is corrupted/empty, restore from defaults
-      console.log('Corrupted or empty users cache, restoring defaults');
+      // If no valid data exists, initialize with defaults
+      console.log('Initializing with default users');
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
       return INITIAL_USERS;
     } catch (error) {
-      console.error('Error in getUsers:', error);
+      console.error('Error in getUsers, restoring defaults:', error);
       // On any error, restore defaults
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
       return INITIAL_USERS;
     }
   },
