@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Image from 'next/image';
 import { User } from '../types';
+import { MockService } from '../services/mockData';
 
 export default function LoginPage() {
   const { loginCaregiver, loginAdmin } = useAuth();
@@ -24,12 +25,31 @@ export default function LoginPage() {
 
   // Reset form state when component mounts
   useEffect(() => {
+    console.log('Login page mounted - resetting state');
     setError('');
     setLoading(false);
     setPhone('');
     setPin('');
     setEmail('');
     setPassword('');
+    
+    // Force a fresh check of users to ensure cache is valid
+    const validateCache = () => {
+      try {
+        const users = MockService.getUsers();
+        console.log('Users available on login page:', users.length);
+        if (users.length === 0) {
+          console.warn('No users found, forcing re-initialization');
+          localStorage.removeItem('cgtm_initialized');
+          // Next getUsers() call will reinitialize
+        }
+      } catch (error) {
+        console.error('Error validating cache:', error);
+        localStorage.removeItem('cgtm_initialized');
+      }
+    };
+    
+    validateCache();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

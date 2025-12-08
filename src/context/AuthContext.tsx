@@ -23,11 +23,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
-    console.log('loginAdmin called with email:', email);
+    console.log('=== ADMIN LOGIN ATTEMPT ===');
+    console.log('Input email:', email);
+    console.log('Input password:', password);
+    
     try {
       // First try localStorage (instant, reliable)
       let users = MockService.getUsers();
       console.log('Users from localStorage:', users.length);
+      console.log('All users:', JSON.stringify(users, null, 2));
       
       // If no users in localStorage, try async Firebase
       if (users.length === 0) {
@@ -36,17 +40,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Users from Firebase:', users.length);
       }
       
-      console.log('Users available:', users.length, users.map(u => u.email || u.phone));
+      console.log('Users available for validation:', users.length);
+      users.forEach(u => {
+        if (u.role === 'admin') {
+          console.log('Admin user found:', {
+            email: u.email,
+            password: u.password,
+            emailMatch: u.email === email,
+            passwordMatch: u.password === password
+          });
+        }
+      });
+      
       const admin = users.find(
         (u) => u.role === 'admin' && u.email === email && u.password === password
       );
+      
       if (admin) {
-        console.log('Admin login successful');
+        console.log('✓ Admin login successful for:', admin.email);
         setUser(admin);
         router.push('/admin');
         return true;
       }
-      console.log('Admin login failed - no match found');
+      console.log('✗ Admin login failed - no match found');
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -55,7 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginCaregiver = async (phone: string, pin: string): Promise<boolean> => {
-    console.log('loginCaregiver called with phone:', phone);
+    console.log('=== CAREGIVER LOGIN ATTEMPT ===');
+    console.log('Input phone:', phone);
+    console.log('Input pin:', pin);
+    
     try {
       // First try localStorage (instant, reliable)
       let users = MockService.getUsers();
@@ -68,17 +87,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Users from Firebase:', users.length);
       }
       
-      console.log('Users available:', users.length, users.map(u => u.email || u.phone));
+      console.log('Users available for validation:', users.length);
+      users.forEach(u => {
+        if (u.role === 'caregiver') {
+          console.log('Caregiver user found:', {
+            phone: u.phone,
+            pin: u.pin,
+            isActive: u.isActive,
+            phoneMatch: u.phone === phone,
+            pinMatch: u.pin === pin
+          });
+        }
+      });
+      
       const caregiver = users.find(
         (u) => u.role === 'caregiver' && u.phone === phone && u.pin === pin && u.isActive
       );
+      
       if (caregiver) {
-        console.log('Caregiver login successful');
+        console.log('✓ Caregiver login successful for:', caregiver.name);
         setUser(caregiver);
         router.push('/caregiver');
         return true;
       }
-      console.log('Caregiver login failed - no match found');
+      console.log('✗ Caregiver login failed - no match found');
       return false;
     } catch (error) {
       console.error('Login error:', error);
