@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Image from 'next/image';
 import { User } from '../types';
@@ -21,6 +21,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotInfo, setForgotInfo] = useState<{ name?: string; phone?: string; email?: string } | null>(null);
+
+  // Reset form state when component mounts
+  useEffect(() => {
+    setError('');
+    setLoading(false);
+    setPhone('');
+    setPin('');
+    setEmail('');
+    setPassword('');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

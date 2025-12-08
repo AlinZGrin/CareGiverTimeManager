@@ -7,35 +7,51 @@ import { isFirebaseConfigured, getFirebaseDatabase } from '../../services/fireba
 export default function TestPage() {
   const [firebaseConfig, setFirebaseConfig] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
+  const [localStorageData, setLocalStorageData] = useState<any>({});
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const test = async () => {
-      try {
-        // Show Firebase config
-        const configured = isFirebaseConfigured();
-        setFirebaseConfig(`Firebase Configured: ${configured}`);
+  const loadData = async () => {
+    try {
+      // Show Firebase config
+      const configured = isFirebaseConfigured();
+      setFirebaseConfig(`Firebase Configured: ${configured}`);
 
-        // Try to get database
-        const db = getFirebaseDatabase();
-        if (db) {
-          console.log('Firebase database connected');
-        } else {
-          console.log('Firebase database NOT connected');
-        }
-
-        // Try to fetch users
-        const fetchedUsers = await MockService.getUsersAsync();
-        console.log('Fetched users:', fetchedUsers);
-        setUsers(fetchedUsers);
-      } catch (err) {
-        setError(String(err));
-        console.error('Error:', err);
+      // Try to get database
+      const db = getFirebaseDatabase();
+      if (db) {
+        console.log('Firebase database connected');
+      } else {
+        console.log('Firebase database NOT connected');
       }
-    };
 
-    test();
+      // Show localStorage data
+      const lsUsers = localStorage.getItem('cgtm_users');
+      const lsInitialized = localStorage.getItem('cgtm_initialized');
+      setLocalStorageData({
+        users: lsUsers ? JSON.parse(lsUsers) : null,
+        initialized: lsInitialized,
+        userCount: lsUsers ? JSON.parse(lsUsers).length : 0
+      });
+
+      // Try to fetch users
+      const fetchedUsers = await MockService.getUsersAsync();
+      console.log('Fetched users:', fetchedUsers);
+      setUsers(fetchedUsers);
+    } catch (err) {
+      setError(String(err));
+      console.error('Error:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const clearCache = () => {
+    localStorage.removeItem('cgtm_users');
+    localStorage.removeItem('cgtm_initialized');
+    alert('Cache cleared! Reload the page to reinitialize.');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -47,8 +63,28 @@ export default function TestPage() {
           <p className="text-blue-800">{firebaseConfig}</p>
         </div>
 
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
+          <h2 className="font-bold text-green-900 mb-2">LocalStorage Data</h2>
+          <p className="text-green-800">Initialized: {localStorageData.initialized || 'false'}</p>
+          <p className="text-green-800">User Count: {localStorageData.userCount}</p>
+          <button 
+            onClick={clearCache}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Clear Cache
+          </button>
+        </div>
+
         <div className="mb-6">
-          <h2 className="font-bold mb-3">Users from Firebase:</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-bold">Users from MockService:</h2>
+            <button 
+              onClick={loadData}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Reload Data
+            </button>
+          </div>
           {users.length > 0 ? (
             <div className="space-y-2">
               {users.map((user, idx) => (
@@ -59,6 +95,7 @@ export default function TestPage() {
                   {user.email && <p><strong>Email:</strong> {user.email}</p>}
                   {user.phone && <p><strong>Phone:</strong> {user.phone}</p>}
                   {user.pin && <p><strong>PIN:</strong> {user.pin}</p>}
+                  {user.password && <p><strong>Password:</strong> {user.password}</p>}
                   <p><strong>Active:</strong> {user.isActive ? 'Yes' : 'No'}</p>
                 </div>
               ))}

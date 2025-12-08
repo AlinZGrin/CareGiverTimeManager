@@ -157,10 +157,20 @@ export const MockService = {
         return INITIAL_USERS;
       }
       
-      // Firebase is empty and already initialized - return cached or empty
+      // Firebase is empty and already initialized - return cached or defaults
       const cached = localStorage.getItem(STORAGE_KEYS.USERS);
-      console.log('Returning cached users:', cached ? JSON.parse(cached).length : 0);
-      return cached ? JSON.parse(cached) : [];
+      if (cached) {
+        const parsedCache = JSON.parse(cached);
+        if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+          console.log('Returning cached users:', parsedCache.length);
+          return parsedCache;
+        }
+      }
+      
+      // If cache is also empty/invalid, restore defaults
+      console.log('Cache invalid, restoring default users');
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
     }
     console.log('Firebase not configured, using local storage');
     return MockService.getUsers();
