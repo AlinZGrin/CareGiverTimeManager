@@ -133,11 +133,26 @@ export const MockService = {
       const fbUsers = await getFirebaseUsersAsync();
       console.log('Firebase users retrieved:', fbUsers.length);
       
-      // If Firebase has users, return them and update cache
+      // If Firebase has users, merge with defaults to ensure admin is always present
       if (fbUsers.length > 0) {
         console.log('Returning users from Firebase');
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(fbUsers));
-        return fbUsers;
+        
+        // CRITICAL: Always ensure admin user exists
+        const hasAdmin = fbUsers.some(u => u.role === 'admin');
+        let finalUsers = fbUsers;
+        
+        if (!hasAdmin) {
+          console.warn('Admin user missing from Firebase, adding default admin');
+          const defaultAdmin = INITIAL_USERS.find(u => u.role === 'admin');
+          if (defaultAdmin) {
+            finalUsers = [defaultAdmin, ...fbUsers];
+            // Save admin to Firebase so it's there next time
+            await saveUserToFirebase(defaultAdmin);
+          }
+        }
+        
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(finalUsers));
+        return finalUsers;
       }
       
       // If Firebase is empty, initialize it with default users (first time setup)
