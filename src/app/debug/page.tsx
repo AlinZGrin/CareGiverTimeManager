@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { isFirebaseConfigured } from '../services/firebase';
+import { isFirebaseConfigured } from '../../services/firebase';
 
 export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string>('');
