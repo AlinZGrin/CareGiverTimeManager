@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const { loginCaregiver, loginAdmin } = useAuth();
@@ -33,9 +34,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">
-          Caregiver Time Manager
-        </h1>
+        <div className="flex items-center justify-center mb-6">
+          <Image src="/icon.png" alt="Logo" width={60} height={60} className="mr-3" />
+          <h1 className="text-2xl font-bold text-gray-800">
+            Caregiver Time Manager
+          </h1>
+        </div>
         
         <div className="flex mb-6 border-b">
           <button

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MockService } from '../../services/mockData';
 import { Shift, ScheduledShift } from '../../types';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   formatShiftTime, 
   formatShiftDate,
@@ -193,7 +194,10 @@ export default function CaregiverDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white shadow p-4 flex justify-between items-center">
-        <h1 className="text-lg font-bold text-gray-800">Hi, {user.name}</h1>
+        <div className="flex items-center space-x-3">
+          <Image src="/icon.png" alt="Logo" width={40} height={40} />
+          <h1 className="text-lg font-bold text-gray-800">Hi, {user.name}</h1>
+        </div>
         <button onClick={logout} className="text-sm text-red-600 font-medium">Logout</button>
       </header>
 

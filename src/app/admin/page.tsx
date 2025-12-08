@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MockService } from '../../services/mockData';
 import { User, Shift, ScheduledShift } from '../../types';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   formatShiftTime, 
   formatShiftDate, 
@@ -171,7 +172,10 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
+        <div className="flex items-center space-x-3">
+          <Image src="/icon.png" alt="Logo" width={40} height={40} />
+          <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
+        </div>
         <div className="flex items-center space-x-4">
           <span className="text-gray-600">Welcome, {user.name}</span>
           <button onClick={logout} className="text-sm text-red-600 font-medium">Logout</button>
