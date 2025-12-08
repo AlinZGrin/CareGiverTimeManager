@@ -14,15 +14,24 @@ const firebaseConfig = {
 
 let app;
 let database: Database | null = null;
+let initError: string | null = null;
 
 export const getFirebaseDatabase = (): Database | null => {
   if (typeof window === 'undefined') return null;
   
-  if (!database) {
+  if (!database && !initError) {
     try {
+      if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
+        initError = 'Firebase config missing required keys';
+        console.error(initError, firebaseConfig);
+        return null;
+      }
+      
       app = initializeApp(firebaseConfig);
       database = getDatabase(app);
+      console.log('Firebase initialized successfully');
     } catch (error) {
+      initError = String(error);
       console.error('Firebase initialization error:', error);
       return null;
     }
@@ -31,8 +40,13 @@ export const getFirebaseDatabase = (): Database | null => {
 };
 
 export const isFirebaseConfigured = (): boolean => {
-  return !!(
+  const configured = !!(
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
     process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
   );
+  if (!configured) {
+    console.warn('Firebase not configured - missing environment variables');
+  }
+  return configured;
 };
+

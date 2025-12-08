@@ -41,15 +41,22 @@ const INITIAL_USERS: User[] = [
 // Helper functions for Firebase operations
 const getFirebaseUsersAsync = async (): Promise<User[]> => {
   const db = getFirebaseDatabase();
-  if (!db) return [];
+  if (!db) {
+    console.log('Firebase DB not available');
+    return [];
+  }
   
   try {
+    console.log('Fetching users from Firebase...');
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
-      return Array.isArray(data) ? data : Object.values(data);
+      const users = Array.isArray(data) ? data : Object.values(data);
+      console.log('Fetched users from Firebase:', users.length);
+      return users;
     }
+    console.log('No users found in Firebase');
     return [];
   } catch (error) {
     console.error('Error fetching users from Firebase:', error);
@@ -85,57 +92,65 @@ export const MockService = {
   getUsers: (): User[] => {
     if (typeof window === 'undefined') return INITIAL_USERS;
     
-    // Use Firebase if configured - it takes priority
-    if (isFirebaseConfigured()) {
-      // For sync calls, return from localStorage as fallback
-      // But Firebase is the source of truth when configured
-      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
-      return stored ? JSON.parse(stored) : [];
+    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+    
+    // If data exists, return it
+    if (stored) {
+      return JSON.parse(stored);
     }
     
-    // Only use LocalStorage if Firebase is not configured
-    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!stored) {
-      // Only initialize with mock data on first app load
-      const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
-      if (!isInitialized) {
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-        return INITIAL_USERS;
-      }
-      // Return empty array if already initialized but no users (user deleted them all)
-      return [];
+    // If no data exists, initialize with defaults (for first-time setup)
+    const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+    if (!isInitialized) {
+      console.log('First time setup - initializing with default users');
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+      return INITIAL_USERS;
     }
-    return JSON.parse(stored);
+    
+    // Already initialized but no users stored - return empty
+    return [];
   },
 
   // Async version that fetches from Firebase if available
   getUsersAsync: async (): Promise<User[]> => {
+    console.log('getUsersAsync called, Firebase configured:', isFirebaseConfigured());
+    
     if (isFirebaseConfigured()) {
+      console.log('Attempting Firebase fetch...');
       const fbUsers = await getFirebaseUsersAsync();
+      console.log('Firebase users retrieved:', fbUsers.length);
       
       // If Firebase has users, return them and update cache
       if (fbUsers.length > 0) {
+        console.log('Returning users from Firebase');
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(fbUsers));
         return fbUsers;
       }
       
       // If Firebase is empty, initialize it with default users (first time setup)
       const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+      console.log('Firebase empty. Is initialized?', !!isInitialized);
+      
       if (!isInitialized) {
+        console.log('First time setup - initializing Firebase with default users');
         // First time: initialize Firebase with default users
         for (const user of INITIAL_USERS) {
+          console.log('Saving user to Firebase:', user.id);
           await saveUserToFirebase(user);
         }
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
         localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+        console.log('Returning default users');
         return INITIAL_USERS;
       }
       
       // Firebase is empty and already initialized - return cached or empty
       const cached = localStorage.getItem(STORAGE_KEYS.USERS);
+      console.log('Returning cached users:', cached ? JSON.parse(cached).length : 0);
       return cached ? JSON.parse(cached) : [];
     }
+    console.log('Firebase not configured, using local storage');
     return MockService.getUsers();
   },
 
