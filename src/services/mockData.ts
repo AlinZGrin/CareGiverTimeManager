@@ -95,12 +95,15 @@ export const MockService = {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.USERS);
       
-      // If data exists, return it
+      // If data exists and is valid, return it
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
       
-      // If no data exists, initialize with defaults (for first-time setup)
+      // If no valid data exists, initialize with defaults (for first-time setup)
       const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
       if (!isInitialized) {
         console.log('First time setup - initializing with default users');
@@ -109,11 +112,14 @@ export const MockService = {
         return INITIAL_USERS;
       }
       
-      // Already initialized but no users stored - return empty
-      return [];
+      // If initialized but data is corrupted/empty, restore from defaults
+      console.log('Corrupted or empty users cache, restoring defaults');
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
     } catch (error) {
       console.error('Error in getUsers:', error);
-      // Return initial users as fallback
+      // On any error, restore defaults
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       return INITIAL_USERS;
     }
   },
@@ -161,46 +167,72 @@ export const MockService = {
   },
 
   saveUser: (user: User) => {
-    // Update Firebase if available
-    if (isFirebaseConfigured()) {
-      saveUserToFirebase(user);
+    try {
+      // Update Firebase if available
+      if (isFirebaseConfigured()) {
+        saveUserToFirebase(user);
+      }
+      
+      // Always update localStorage as fallback
+      const users = MockService.getUsers();
+      const index = users.findIndex((u) => u.id === user.id);
+      if (index >= 0) {
+        users[index] = user;
+      } else {
+        users.push(user);
+      }
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      console.log('User saved successfully:', user.id);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      // Don't fail silently - ensure at least the user is sent to Firebase
+      if (isFirebaseConfigured()) {
+        saveUserToFirebase(user);
+      }
     }
-    
-    // Always update localStorage as fallback
-    const users = MockService.getUsers();
-    const index = users.findIndex((u) => u.id === user.id);
-    if (index >= 0) {
-      users[index] = user;
-    } else {
-      users.push(user);
-    }
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   },
 
   updateUser: (userId: string, updates: Partial<User>) => {
-    const users = MockService.getUsers();
-    const index = users.findIndex((u) => u.id === userId);
-    if (index >= 0) {
-      users[index] = { ...users[index], ...updates };
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-      
-      // Update Firebase if available
-      if (isFirebaseConfigured()) {
-        saveUserToFirebase(users[index]);
+    try {
+      const users = MockService.getUsers();
+      const index = users.findIndex((u) => u.id === userId);
+      if (index >= 0) {
+        users[index] = { ...users[index], ...updates };
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+        
+        // Update Firebase if available
+        if (isFirebaseConfigured()) {
+          saveUserToFirebase(users[index]);
+        }
+        
+        console.log('User updated successfully:', userId);
+        return users[index];
       }
-      
-      return users[index];
+      console.log('User not found:', userId);
+      return null;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return null;
     }
-    return null;
   },
 
   deleteUser: (userId: string) => {
-    const users = MockService.getUsers().filter((u) => u.id !== userId);
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-    
-    // Delete from Firebase if available
-    if (isFirebaseConfigured()) {
-      deleteUserFromFirebase(userId);
+    try {
+      const users = MockService.getUsers().filter((u) => u.id !== userId);
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      
+      // Delete from Firebase if available
+      if (isFirebaseConfigured()) {
+        deleteUserFromFirebase(userId);
+      }
+      
+      console.log('User deleted successfully:', userId);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      // Still try to delete from Firebase if localStorage fails
+      if (isFirebaseConfigured()) {
+        deleteUserFromFirebase(userId);
+      }
     }
   },
 
