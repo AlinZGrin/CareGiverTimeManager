@@ -382,20 +382,20 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-bold mb-4">Manage Caregivers</h3>
               <table className="min-w-full">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-2">Name</th>
-                    <th className="pb-2">Phone</th>
-                    <th className="pb-2">Rate</th>
-                    <th className="pb-2">Status</th>
-                    <th className="pb-2">Actions</th>
+                  <tr className="text-left text-gray-900 font-semibold border-b">
+                    <th className="pb-2 text-xs md:text-sm">Name</th>
+                    <th className="pb-2 text-xs md:text-sm">Phone</th>
+                    <th className="pb-2 text-xs md:text-sm">Rate</th>
+                    <th className="pb-2 text-xs md:text-sm">Status</th>
+                    <th className="pb-2 text-xs md:text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {caregivers.map(c => (
                     <tr key={c.id} className="border-b last:border-0">
-                      <td className="py-3">{c.name}</td>
-                      <td className="py-3">{c.phone}</td>
-                      <td className="py-3">
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{c.name}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{c.phone}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
                         {editingCaregiver?.id === c.id ? (
                           <div className="flex items-center gap-2">
                             <span>$</span>
@@ -434,7 +434,7 @@ export default function AdminDashboard() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3">
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
                         <button
                           onClick={() => handleToggleCaregiverStatus(c.id, !c.isActive)}
                           className={`px-2 py-1 rounded text-xs cursor-pointer ${c.isActive ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}`}
@@ -442,7 +442,7 @@ export default function AdminDashboard() {
                           {c.isActive ? 'Active' : 'Inactive'}
                         </button>
                       </td>
-                      <td className="py-3">
+                      <td className="py-3 text-xs md:text-sm">
                         <button
                           onClick={() => handleDeleteCaregiver(c.id)}
                           className="text-red-600 hover:text-red-800 text-sm font-medium"
