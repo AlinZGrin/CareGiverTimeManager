@@ -1,0 +1,224 @@
+import { User, Shift, ScheduledShift } from '../types';
+
+const STORAGE_KEYS = {
+  USERS: 'cgtm_users',
+  SHIFTS: 'cgtm_shifts',
+  SCHEDULED_SHIFTS: 'cgtm_scheduled_shifts',
+};
+
+const INITIAL_USERS: User[] = [
+  {
+    id: 'admin-1',
+    name: 'Family Admin',
+    role: 'admin',
+    email: 'admin@example.com',
+    password: 'password123',
+    isActive: true,
+  },
+  {
+    id: 'caregiver-1',
+    name: 'Jane Doe',
+    role: 'caregiver',
+    phone: '5551234',
+    pin: '1234',
+    hourlyRate: 25.0,
+    isActive: true,
+  },
+  {
+    id: 'caregiver-2',
+    name: 'John Smith',
+    role: 'caregiver',
+    phone: '5555678',
+    pin: '5678',
+    hourlyRate: 28.0,
+    isActive: true,
+  },
+];
+
+export const MockService = {
+  getUsers: (): User[] => {
+    if (typeof window === 'undefined') return INITIAL_USERS;
+    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+    if (!stored) {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
+    }
+    return JSON.parse(stored);
+  },
+
+  saveUser: (user: User) => {
+    const users = MockService.getUsers();
+    const index = users.findIndex((u) => u.id === user.id);
+    if (index >= 0) {
+      users[index] = user;
+    } else {
+      users.push(user);
+    }
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+  },
+
+  updateUser: (userId: string, updates: Partial<User>) => {
+    const users = MockService.getUsers();
+    const index = users.findIndex((u) => u.id === userId);
+    if (index >= 0) {
+      users[index] = { ...users[index], ...updates };
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      return users[index];
+    }
+    return null;
+  },
+
+  deleteUser: (userId: string) => {
+    const users = MockService.getUsers().filter((u) => u.id !== userId);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+  },
+
+  getShifts: (): Shift[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem(STORAGE_KEYS.SHIFTS);
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  saveShift: (shift: Shift) => {
+    const shifts = MockService.getShifts();
+    const index = shifts.findIndex((s) => s.id === shift.id);
+    if (index >= 0) {
+      shifts[index] = shift;
+    } else {
+      shifts.push(shift);
+    }
+    localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+  },
+
+  deleteShift: (shiftId: string) => {
+    const shifts = MockService.getShifts().filter((s) => s.id !== shiftId);
+    localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+  },
+
+  getActiveShift: (caregiverId: string): Shift | undefined => {
+    const shifts = MockService.getShifts();
+    return shifts.find((s) => s.caregiverId === caregiverId && !s.endTime && s.status === 'in-progress');
+  },
+
+  // Scheduled Shifts Management
+  getScheduledShifts: (): ScheduledShift[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem(STORAGE_KEYS.SCHEDULED_SHIFTS);
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  saveScheduledShift: (shift: ScheduledShift) => {
+    const shifts = MockService.getScheduledShifts();
+    const index = shifts.findIndex((s) => s.id === shift.id);
+    if (index >= 0) {
+      shifts[index] = shift;
+    } else {
+      shifts.push(shift);
+    }
+    localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+  },
+
+  updateScheduledShift: (shiftId: string, updates: Partial<ScheduledShift>) => {
+    const shifts = MockService.getScheduledShifts();
+    const index = shifts.findIndex((s) => s.id === shiftId);
+    if (index >= 0) {
+      shifts[index] = { ...shifts[index], ...updates };
+      localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+      return shifts[index];
+    }
+    return null;
+  },
+
+  deleteScheduledShift: (shiftId: string) => {
+    const shifts = MockService.getScheduledShifts().filter((s) => s.id !== shiftId);
+    localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+  },
+
+  // Get available (open) shifts for a caregiver
+  getAvailableShifts: (caregiverId?: string): ScheduledShift[] => {
+    const shifts = MockService.getScheduledShifts();
+    if (caregiverId) {
+      // Return open shifts and shifts assigned to this caregiver
+      return shifts.filter((s) => s.status === 'open' || s.caregiverId === caregiverId);
+    }
+    return shifts.filter((s) => s.status === 'open');
+  },
+
+  // Get shifts assigned to a specific caregiver
+  getMyCaregiverShifts: (caregiverId: string): ScheduledShift[] => {
+    const shifts = MockService.getScheduledShifts();
+    return shifts.filter((s) => s.caregiverId === caregiverId && s.status !== 'open');
+  },
+
+  // Claim a shift (caregiver self-assignment)
+  claimShift: (shiftId: string, caregiverId: string): { success: boolean; message: string } => {
+    const shifts = MockService.getScheduledShifts();
+    const shift = shifts.find((s) => s.id === shiftId);
+    
+    if (!shift) {
+      return { success: false, message: 'Shift not found' };
+    }
+    
+    if (shift.status !== 'open') {
+      return { success: false, message: 'Shift is no longer available' };
+    }
+    
+    // Check for conflicts
+    const conflict = MockService.checkShiftConflict(caregiverId, shift.scheduledStartTime, shift.scheduledEndTime);
+    if (conflict) {
+      return { success: false, message: 'You have an overlapping shift at this time' };
+    }
+    
+    // Assign shift
+    shift.caregiverId = caregiverId;
+    shift.status = 'assigned';
+    MockService.saveScheduledShift(shift);
+    
+    return { success: true, message: 'Shift claimed successfully' };
+  },
+
+  // Drop a shift (caregiver cancellation)
+  dropShift: (shiftId: string, caregiverId: string): { success: boolean; message: string } => {
+    const shifts = MockService.getScheduledShifts();
+    const shift = shifts.find((s) => s.id === shiftId);
+    
+    if (!shift) {
+      return { success: false, message: 'Shift not found' };
+    }
+    
+    if (shift.caregiverId !== caregiverId) {
+      return { success: false, message: 'This is not your shift' };
+    }
+    
+    // Check if shift is more than 24 hours away
+    const now = new Date().getTime();
+    const shiftStart = new Date(shift.scheduledStartTime).getTime();
+    const hoursUntilShift = (shiftStart - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilShift < 24) {
+      return { success: false, message: 'Cannot drop shift less than 24 hours before start. Contact Admin.' };
+    }
+    
+    // Revert to open
+    shift.caregiverId = null;
+    shift.status = 'open';
+    MockService.saveScheduledShift(shift);
+    
+    return { success: true, message: 'Shift dropped successfully' };
+  },
+
+  // Check if a caregiver has conflicting shifts
+  checkShiftConflict: (caregiverId: string, newStartTime: string, newEndTime: string): boolean => {
+    const caregiverShifts = MockService.getMyCaregiverShifts(caregiverId);
+    const newStart = new Date(newStartTime).getTime();
+    const newEnd = new Date(newEndTime).getTime();
+    
+    return caregiverShifts.some((shift) => {
+      const existingStart = new Date(shift.scheduledStartTime).getTime();
+      const existingEnd = new Date(shift.scheduledEndTime).getTime();
+      
+      // Check for overlap
+      return (newStart < existingEnd && newEnd > existingStart);
+    });
+  },
+};
