@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
-  loginAdmin: (email: string, password: string) => boolean;
-  loginCaregiver: (phone: string, pin: string) => boolean;
+  loginAdmin: (email: string, password: string) => Promise<boolean>;
+  loginCaregiver: (phone: string, pin: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -22,8 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for persisted session (optional, skipping for simplicity/security in prototype)
   }, []);
 
-  const loginAdmin = (email: string, password: string): boolean => {
-    const users = MockService.getUsers();
+  const loginAdmin = async (email: string, password: string): Promise<boolean> => {
+    const users = await MockService.getUsersAsync();
     const admin = users.find(
       (u) => u.role === 'admin' && u.email === email && u.password === password
     );
@@ -35,8 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const loginCaregiver = (phone: string, pin: string): boolean => {
-    const users = MockService.getUsers();
+  const loginCaregiver = async (phone: string, pin: string): Promise<boolean> => {
+    const users = await MockService.getUsersAsync();
     const caregiver = users.find(
       (u) => u.role === 'caregiver' && u.phone === phone && u.pin === pin && u.isActive
     );

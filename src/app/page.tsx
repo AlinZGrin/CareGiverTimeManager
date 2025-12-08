@@ -18,19 +18,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotInfo, setForgotInfo] = useState<{ name?: string; phone?: string; email?: string } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
-    if (isCaregiver) {
-      const success = loginCaregiver(phone, pin);
-      if (!success) setError('Invalid Phone or PIN');
-    } else {
-      const success = loginAdmin(email, password);
-      if (!success) setError('Invalid Email or Password');
+    try {
+      if (isCaregiver) {
+        const success = await loginCaregiver(phone, pin);
+        if (!success) setError('Invalid Phone or PIN');
+      } else {
+        const success = await loginAdmin(email, password);
+        if (!success) setError('Invalid Email or Password');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -157,9 +166,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={loading}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isCaregiver ? 'Login' : 'Admin Login'}
+            {loading ? 'Logging in...' : (isCaregiver ? 'Login' : 'Admin Login')}
           </button>
 
           <button
