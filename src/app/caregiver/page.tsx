@@ -27,7 +27,7 @@ export default function CaregiverDashboard() {
   const [showPin, setShowPin] = useState(false);
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
 
-  const loadScheduledShifts = () => {
+  const loadScheduledShifts = async () => {
     if (!user) return;
     const available = MockService.getAvailableShifts(user.id);
     setScheduledShifts(available.filter(s => s.status === 'open'));
@@ -46,6 +46,10 @@ export default function CaregiverDashboard() {
     
     // Load scheduled shifts
     loadScheduledShifts();
+    
+    // Set up interval to sync every 2 seconds
+    const interval = setInterval(loadScheduledShifts, 2000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
 

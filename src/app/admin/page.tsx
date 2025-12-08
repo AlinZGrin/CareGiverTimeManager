@@ -38,10 +38,14 @@ export default function AdminDashboard() {
       return;
     }
     refreshData();
+    
+    // Set up interval to sync with Firebase every 2 seconds
+    const interval = setInterval(refreshData, 2000);
+    return () => clearInterval(interval);
   }, [user, router]);
 
-  const refreshData = () => {
-    const allUsers = MockService.getUsers();
+  const refreshData = async () => {
+    const allUsers = await MockService.getUsersAsync();
     setCaregivers(allUsers.filter(u => u.role === 'caregiver'));
     
     const allShifts = MockService.getShifts();

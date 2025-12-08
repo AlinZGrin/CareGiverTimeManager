@@ -85,14 +85,15 @@ export const MockService = {
   getUsers: (): User[] => {
     if (typeof window === 'undefined') return INITIAL_USERS;
     
-    // Use Firebase if configured, otherwise fallback to LocalStorage
+    // Use Firebase if configured - it takes priority
     if (isFirebaseConfigured()) {
       // For sync calls, return from localStorage as fallback
-      // The app should call getUsersAsync() for real-time data
+      // But Firebase is the source of truth when configured
       const stored = localStorage.getItem(STORAGE_KEYS.USERS);
       return stored ? JSON.parse(stored) : [];
     }
     
+    // Only use LocalStorage if Firebase is not configured
     const stored = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!stored) {
       // Only initialize with mock data on first app load
@@ -111,7 +112,12 @@ export const MockService = {
   // Async version that fetches from Firebase if available
   getUsersAsync: async (): Promise<User[]> => {
     if (isFirebaseConfigured()) {
-      return await getFirebaseUsersAsync();
+      const fbUsers = await getFirebaseUsersAsync();
+      // Update localStorage cache with Firebase data
+      if (fbUsers.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(fbUsers));
+      }
+      return fbUsers;
     }
     return MockService.getUsers();
   },
