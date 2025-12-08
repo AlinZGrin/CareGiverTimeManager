@@ -113,11 +113,28 @@ export const MockService = {
   getUsersAsync: async (): Promise<User[]> => {
     if (isFirebaseConfigured()) {
       const fbUsers = await getFirebaseUsersAsync();
-      // Update localStorage cache with Firebase data
+      
+      // If Firebase has users, return them and update cache
       if (fbUsers.length > 0) {
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(fbUsers));
+        return fbUsers;
       }
-      return fbUsers;
+      
+      // If Firebase is empty, initialize it with default users (first time setup)
+      const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+      if (!isInitialized) {
+        // First time: initialize Firebase with default users
+        for (const user of INITIAL_USERS) {
+          await saveUserToFirebase(user);
+        }
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+        return INITIAL_USERS;
+      }
+      
+      // Firebase is empty and already initialized - return cached or empty
+      const cached = localStorage.getItem(STORAGE_KEYS.USERS);
+      return cached ? JSON.parse(cached) : [];
     }
     return MockService.getUsers();
   },
