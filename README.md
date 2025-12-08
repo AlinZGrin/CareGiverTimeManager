@@ -40,6 +40,8 @@ A responsive web application to track time, manage hourly rates, calculate payro
 
 ## Getting Started
 
+### Local Development
+
 First, install dependencies:
 
 ```bash
@@ -53,6 +55,16 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+
+### Deploy to Internet
+
+Your app is ready to deploy! Deploy to Vercel (free, fast, reliable):
+
+```bash
+vercel --prod
+```
+
+See [DEPLOY_NOW.md](DEPLOY_NOW.md) for quick instructions.
 
 ## Default Login Credentials
 
