@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   USERS: 'cgtm_users',
   SHIFTS: 'cgtm_shifts',
   SCHEDULED_SHIFTS: 'cgtm_scheduled_shifts',
+  INITIALIZED: 'cgtm_initialized',
 };
 
 const INITIAL_USERS: User[] = [
@@ -40,8 +41,15 @@ export const MockService = {
     if (typeof window === 'undefined') return INITIAL_USERS;
     const stored = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
+      // Only initialize with mock data on first app load
+      const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+      if (!isInitialized) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+        return INITIAL_USERS;
+      }
+      // Return empty array if already initialized but no users (user deleted them all)
+      return [];
     }
     return JSON.parse(stored);
   },
@@ -220,5 +228,18 @@ export const MockService = {
       // Check for overlap
       return (newStart < existingEnd && newEnd > existingStart);
     });
+  },
+
+  // Reset all data to initial state (for debugging/testing)
+  resetAllData: () => {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+  },
+
+  // Clear initialization flag to allow reset on next load
+  clearInitialization: () => {
+    localStorage.removeItem(STORAGE_KEYS.INITIALIZED);
   },
 };
