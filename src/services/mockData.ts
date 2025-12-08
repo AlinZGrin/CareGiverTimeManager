@@ -1,4 +1,6 @@
 import { User, Shift, ScheduledShift } from '../types';
+import { getFirebaseDatabase, isFirebaseConfigured } from './firebase';
+import { ref, get, set, update, remove, onValue, off } from 'firebase/database';
 
 const STORAGE_KEYS = {
   USERS: 'cgtm_users',
@@ -36,9 +38,61 @@ const INITIAL_USERS: User[] = [
   },
 ];
 
+// Helper functions for Firebase operations
+const getFirebaseUsersAsync = async (): Promise<User[]> => {
+  const db = getFirebaseDatabase();
+  if (!db) return [];
+  
+  try {
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      return Array.isArray(data) ? data : Object.values(data);
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching users from Firebase:', error);
+    return [];
+  }
+};
+
+const saveUserToFirebase = async (user: User) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const userRef = ref(db, `users/${user.id}`);
+    await set(userRef, user);
+  } catch (error) {
+    console.error('Error saving user to Firebase:', error);
+  }
+};
+
+const deleteUserFromFirebase = async (userId: string) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const userRef = ref(db, `users/${userId}`);
+    await remove(userRef);
+  } catch (error) {
+    console.error('Error deleting user from Firebase:', error);
+  }
+};
+
 export const MockService = {
   getUsers: (): User[] => {
     if (typeof window === 'undefined') return INITIAL_USERS;
+    
+    // Use Firebase if configured, otherwise fallback to LocalStorage
+    if (isFirebaseConfigured()) {
+      // For sync calls, return from localStorage as fallback
+      // The app should call getUsersAsync() for real-time data
+      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+      return stored ? JSON.parse(stored) : [];
+    }
+    
     const stored = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!stored) {
       // Only initialize with mock data on first app load
@@ -54,7 +108,21 @@ export const MockService = {
     return JSON.parse(stored);
   },
 
+  // Async version that fetches from Firebase if available
+  getUsersAsync: async (): Promise<User[]> => {
+    if (isFirebaseConfigured()) {
+      return await getFirebaseUsersAsync();
+    }
+    return MockService.getUsers();
+  },
+
   saveUser: (user: User) => {
+    // Update Firebase if available
+    if (isFirebaseConfigured()) {
+      saveUserToFirebase(user);
+    }
+    
+    // Always update localStorage as fallback
     const users = MockService.getUsers();
     const index = users.findIndex((u) => u.id === user.id);
     if (index >= 0) {
@@ -71,6 +139,12 @@ export const MockService = {
     if (index >= 0) {
       users[index] = { ...users[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      
+      // Update Firebase if available
+      if (isFirebaseConfigured()) {
+        saveUserToFirebase(users[index]);
+      }
+      
       return users[index];
     }
     return null;
@@ -79,6 +153,11 @@ export const MockService = {
   deleteUser: (userId: string) => {
     const users = MockService.getUsers().filter((u) => u.id !== userId);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    
+    // Delete from Firebase if available
+    if (isFirebaseConfigured()) {
+      deleteUserFromFirebase(userId);
+    }
   },
 
   getShifts: (): Shift[] => {
