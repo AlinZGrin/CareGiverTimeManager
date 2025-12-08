@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Image from 'next/image';
+import { User } from '../types';
 
 export default function LoginPage() {
   const { loginCaregiver, loginAdmin } = useAuth();
@@ -17,6 +18,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   
   const [error, setError] = useState('');
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotInfo, setForgotInfo] = useState<{ name?: string; phone?: string; email?: string } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +31,46 @@ export default function LoginPage() {
     } else {
       const success = loginAdmin(email, password);
       if (!success) setError('Invalid Email or Password');
+    }
+  };
+
+  const handleForgotCredentials = () => {
+    setError('');
+    setForgotInfo(null);
+    
+    if (isCaregiver) {
+      // For caregivers, we need their name to look up credentials
+      const name = prompt('Enter your full name (e.g., Jane Doe):');
+      if (!name) return;
+      
+      // Get all users and find matching caregiver
+      const users = JSON.parse(localStorage.getItem('cgtm_users') || '[]');
+      const caregiver = users.find((u: User) => 
+        u.role === 'caregiver' && u.name.toLowerCase() === name.toLowerCase()
+      );
+      
+      if (caregiver) {
+        setForgotInfo({
+          name: caregiver.name,
+          phone: caregiver.phone,
+        });
+        setShowForgotModal(true);
+      } else {
+        setError('No caregiver found with that name. Please contact your administrator.');
+      }
+    } else {
+      // For admins, show all admin accounts
+      const users = JSON.parse(localStorage.getItem('cgtm_users') || '[]');
+      const admin = users.find((u: User) => u.role === 'admin');
+      
+      if (admin) {
+        setForgotInfo({
+          email: admin.email,
+        });
+        setShowForgotModal(true);
+      } else {
+        setError('No admin account found. Please contact support.');
+      }
     }
   };
 
@@ -118,6 +161,14 @@ export default function LoginPage() {
           >
             {isCaregiver ? 'Login' : 'Admin Login'}
           </button>
+
+          <button
+            type="button"
+            onClick={handleForgotCredentials}
+            className="w-full text-sm text-blue-600 hover:text-blue-800 underline mt-2"
+          >
+            Forgot {isCaregiver ? 'Phone/PIN' : 'Email/Password'}?
+          </button>
         </form>
         
         <div className="mt-4 text-center text-xs text-gray-500">
@@ -126,6 +177,61 @@ export default function LoginPage() {
           <p>Admin: admin@example.com / password123</p>
         </div>
       </div>
+
+      {/* Forgot Credentials Modal */}
+      {showForgotModal && forgotInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              {isCaregiver ? 'Your Caregiver Credentials' : 'Admin Credentials'}
+            </h2>
+            
+            <div className="space-y-3 mb-6">
+              {isCaregiver ? (
+                <>
+                  <div>
+                    <p className="text-sm text-gray-600">Name:</p>
+                    <p className="font-semibold text-gray-900">{forgotInfo.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Phone Number:</p>
+                    <p className="font-semibold text-gray-900">{forgotInfo.phone}</p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> Your PIN cannot be displayed for security reasons. 
+                      Please contact your administrator to reset it if needed.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-sm text-gray-600">Email:</p>
+                    <p className="font-semibold text-gray-900">{forgotInfo.email}</p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> Your password cannot be displayed for security reasons. 
+                      You can change it in the Settings tab after logging in.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <button
+              onClick={() => {
+                setShowForgotModal(false);
+                setForgotInfo(null);
+              }}
+              className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
