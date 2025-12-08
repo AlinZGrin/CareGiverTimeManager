@@ -92,24 +92,30 @@ export const MockService = {
   getUsers: (): User[] => {
     if (typeof window === 'undefined') return INITIAL_USERS;
     
-    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
-    
-    // If data exists, return it
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    
-    // If no data exists, initialize with defaults (for first-time setup)
-    const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
-    if (!isInitialized) {
-      console.log('First time setup - initializing with default users');
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-      localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+      
+      // If data exists, return it
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      
+      // If no data exists, initialize with defaults (for first-time setup)
+      const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+      if (!isInitialized) {
+        console.log('First time setup - initializing with default users');
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+        return INITIAL_USERS;
+      }
+      
+      // Already initialized but no users stored - return empty
+      return [];
+    } catch (error) {
+      console.error('Error in getUsers:', error);
+      // Return initial users as fallback
       return INITIAL_USERS;
     }
-    
-    // Already initialized but no users stored - return empty
-    return [];
   },
 
   // Async version that fetches from Firebase if available
