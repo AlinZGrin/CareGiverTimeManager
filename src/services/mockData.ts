@@ -262,7 +262,13 @@ export const MockService = {
   // Async version that fetches from Firebase if available
   getUsersAsync: async (): Promise<User[]> => {
     if (isFirebaseConfigured()) {
-      const fbUsers = await getFirebaseUsersAsync();
+      let fbUsers = await getFirebaseUsersAsync();
+      
+      // Normalize emails to lowercase for consistent comparison
+      fbUsers = fbUsers.map(u => ({
+        ...u,
+        email: u.email ? u.email.toLowerCase() : u.email
+      }));
       
       // If Firebase has users, merge with defaults to ensure admin is always present
       if (fbUsers.length > 0) {
