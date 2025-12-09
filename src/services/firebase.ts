@@ -17,6 +17,18 @@ let database: Database | null = null;
 let auth: Auth | null = null;
 let initError: string | null = null;
 
+// Initialize Firebase Auth eagerly when module loads
+if (typeof window !== 'undefined') {
+  // Defer to avoid blocking
+  setTimeout(() => {
+    try {
+      getFirebaseAuth();
+    } catch (e) {
+      // Silent - will retry on actual use
+    }
+  }, 500);
+}
+
 const getFirebaseApp = (): FirebaseApp | null => {
   if (typeof window === 'undefined') return null;
   
@@ -61,25 +73,17 @@ export const getFirebaseDatabase = (): Database | null => {
 export const getFirebaseAuth = (): Auth | null => {
   if (typeof window === 'undefined') return null;
   
-  if (!auth && !initError) {
+  if (!auth) {
     try {
       const app = getFirebaseApp();
       if (!app) {
-        initError = 'Firebase app not initialized';
         return null;
       }
       
       auth = getAuth(app);
     } catch (error) {
-      initError = String(error);
       return null;
     }
-  }
-  
-  // If there was an error before, try one more time
-  if (!auth && initError) {
-    initError = null;
-    return getFirebaseAuth();
   }
   
   return auth;

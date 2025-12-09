@@ -211,7 +211,7 @@ export default function LoginPage() {
             onClick={handleForgotCredentials}
             className="w-full text-sm text-blue-600 hover:text-blue-800 underline mt-2"
           >
-            Forgot {isCaregiver ? 'Phone/PIN' : 'Email/Password'}?
+            {isCaregiver ? 'Forgot Phone/PIN?' : 'Forgot Password?'}
           </button>
         </form>
       </div>
