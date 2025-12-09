@@ -32,10 +32,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authResult.success) {
         // Firebase Auth successful - now get the user data from database
         const users = await MockService.getUsersAsync();
+        console.log('[LOGIN DEBUG] Searching for email:', email);
         console.log('[LOGIN DEBUG] Users from database:', users.map(u => ({ id: u.id, email: u.email, role: u.role })));
         
         const admin = users.find((u) => u.role === 'admin' && u.email === email);
         console.log('[LOGIN DEBUG] Admin found:', admin);
+        console.log('[LOGIN DEBUG] Admin search result:', { role: admin?.role, email: admin?.email });
         
         if (admin) {
           setUser(admin);
