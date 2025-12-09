@@ -15,7 +15,7 @@ const INITIAL_USERS: User[] = [
     id: 'admin-1',
     name: 'Family Admin',
     role: 'admin',
-    email: 'albert.weinfeld@gmail.com',
+    email: 'lauraweinfeld70@gmail.com',
     password: 'password123',
     isActive: true,
   },
