@@ -1,4 +1,4 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
 import { getAuth, Auth, sendPasswordResetEmail } from 'firebase/auth';
 
@@ -13,28 +13,49 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 };
 
-let app: FirebaseApp | null = null;
 let database: Database | null = null;
 let auth: Auth | null = null;
 let initError: string | null = null;
+
+const getFirebaseApp = (): FirebaseApp | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    // Check if app is already initialized
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      return existingApps[0];
+    }
+    
+    // Initialize new app
+    if (!firebaseConfig.apiKey) {
+      console.error('Firebase config missing API key');
+      return null;
+    }
+    
+    return initializeApp(firebaseConfig);
+  } catch (error) {
+    console.error('Error getting Firebase app:', error);
+    return null;
+  }
+};
 
 export const getFirebaseDatabase = (): Database | null => {
   if (typeof window === 'undefined') return null;
   
   if (!database && !initError) {
     try {
-      if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
-        initError = 'Firebase config missing required keys';
-        console.error(initError, firebaseConfig);
+      const app = getFirebaseApp();
+      if (!app) {
+        initError = 'Firebase app not initialized';
         return null;
       }
       
-      app = initializeApp(firebaseConfig);
       database = getDatabase(app);
-      console.log('Firebase initialized successfully');
+      console.log('Firebase Database initialized successfully');
     } catch (error) {
       initError = String(error);
-      console.error('Firebase initialization error:', error);
+      console.error('Firebase Database initialization error:', error);
       return null;
     }
   }
@@ -46,17 +67,16 @@ export const getFirebaseAuth = (): Auth | null => {
   
   if (!auth && !initError) {
     try {
-      if (!firebaseConfig.apiKey || !firebaseConfig.authDomain) {
-        initError = 'Firebase config missing required keys for Auth';
-        console.error(initError, firebaseConfig);
+      const app = getFirebaseApp();
+      if (!app) {
+        initError = 'Firebase app not initialized';
+        console.error('Cannot initialize Firebase Auth - app not available');
         return null;
       }
       
-      if (!app) {
-        app = initializeApp(firebaseConfig);
-      }
       auth = getAuth(app);
       console.log('Firebase Auth initialized successfully');
+      console.log('Auth domain:', firebaseConfig.authDomain);
     } catch (error) {
       initError = String(error);
       console.error('Firebase Auth initialization error:', error);
