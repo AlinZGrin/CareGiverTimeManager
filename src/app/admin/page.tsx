@@ -732,7 +732,7 @@ export default function AdminDashboard() {
                             name="email"
                             defaultValue={admin.email}
                             required
-                            className="w-full border p-2 rounded"
+                            className="w-full border p-2 rounded text-gray-900 font-medium"
                           />
                         </div>
                         <div>
@@ -744,7 +744,7 @@ export default function AdminDashboard() {
                               type={showPassword[admin.id] ? 'text' : 'password'}
                               name="password"
                               placeholder="Enter new password"
-                              className="w-full border p-2 rounded pr-10"
+                              className="w-full border p-2 rounded pr-10 text-gray-900 font-medium"
                             />
                             <button
                               type="button"
@@ -823,7 +823,7 @@ export default function AdminDashboard() {
                             name="phone"
                             defaultValue={caregiver.phone}
                             required
-                            className="w-full border p-2 rounded"
+                            className="w-full border p-2 rounded text-gray-900 font-medium"
                           />
                         </div>
                         <div>
@@ -837,7 +837,7 @@ export default function AdminDashboard() {
                               placeholder="Enter new 4-digit PIN"
                               maxLength={4}
                               pattern="\d{4}"
-                              className="w-full border p-2 rounded pr-10"
+                              className="w-full border p-2 rounded pr-10 text-gray-900 font-medium"
                             />
                             <button
                               type="button"
