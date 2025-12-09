@@ -55,10 +55,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginCaregiver = async (phone: string, pin: string): Promise<boolean> => {
-    console.log('=== CAREGIVER LOGIN ATTEMPT ===');
-    console.log('Input phone:', phone);
-    console.log('Input pin:', pin);
-    
     try {
       // Use Firebase for login to ensure cross-browser authentication
       const users = await MockService.getUsersAsync();
