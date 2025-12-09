@@ -15,6 +15,14 @@ const INITIAL_USERS: User[] = [
     id: 'admin-1',
     name: 'Family Admin',
     role: 'admin',
+    email: 'albert.weinfeld@gmail.com',
+    password: 'password123',
+    isActive: true,
+  },
+  {
+    id: 'admin-2',
+    name: 'Example Admin',
+    role: 'admin',
     email: 'admin@example.com',
     password: 'password123',
     isActive: true,
@@ -624,30 +632,38 @@ export const MockService = {
 
   // Password reset functions
   requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
+    console.log('🔐 PASSWORD RESET: Request received for email:', email);
+    
     const users = MockService.getUsers();
+    console.log('🔐 PASSWORD RESET: Available users:', users.map(u => ({ role: u.role, email: u.email })));
+    
     const user = users.find(u => u.role === 'admin' && u.email === email);
+    console.log('🔐 PASSWORD RESET: User found:', !!user);
     
     if (!user) {
+      console.log('⚠️  PASSWORD RESET: No admin user found with email:', email);
       // For security, don't reveal if email exists
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
+    console.log('🔐 PASSWORD RESET: Generating local token...');
     // Always use local token system (Firebase requires pre-configured users)
     const resetToken = generateResetToken(email, user.id);
     
+    console.log('🔐 PASSWORD RESET: Attempting Firebase email...');
     // Try Firebase email as well (won't hurt if it fails)
     const firebaseResult = await sendPasswordResetEmailToAdmin(email);
     
     // Log reset token to console for testing
     const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
-    console.log('=== PASSWORD RESET LINK ===');
-    console.log('🔐 Reset Token:', resetToken);
-    console.log('🔗 Reset Link:', resetLink);
-    console.log('⏱️  Token expires in 1 hour');
-    console.log('===========================');
+    console.log('%c=== PASSWORD RESET LINK ===', 'color: blue; font-weight: bold; font-size: 14px');
+    console.log('%c🔐 Reset Token:', 'color: green; font-weight: bold', resetToken);
+    console.log('%c🔗 Reset Link:', 'color: green; font-weight: bold', resetLink);
+    console.log('%c⏱️  Token expires in 1 hour', 'color: orange; font-weight: bold');
+    console.log('%c===========================', 'color: blue; font-weight: bold; font-size: 14px');
     
     if (firebaseResult.success) {
-      console.log('✅ Firebase email sent successfully');
+      console.log('✅ Firebase email sent successfully to:', email);
       return { 
         success: true, 
         message: firebaseResult.message
@@ -655,6 +671,7 @@ export const MockService = {
     } else {
       // Firebase failed, but local token is ready
       console.log('⚠️  Firebase email unavailable, using local token system');
+      console.log('🔗 CLICK HERE TO RESET PASSWORD:', resetLink);
       return { 
         success: true, 
         message: 'Reset link has been generated. Check your browser console for the link (F12 > Console tab), or check your email if you have Firebase configured.',
