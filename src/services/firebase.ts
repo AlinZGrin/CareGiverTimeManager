@@ -75,6 +75,13 @@ export const getFirebaseAuth = (): Auth | null => {
       return null;
     }
   }
+  
+  // If there was an error before, try one more time
+  if (!auth && initError) {
+    initError = null;
+    return getFirebaseAuth();
+  }
+  
   return auth;
 };
 
@@ -100,7 +107,7 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
     } else if (error.code === 'auth/too-many-requests') {
       return { success: false, message: 'Too many reset requests. Please try again later.' };
     }
-    return { success: false, message: `Firebase email service unavailable: ${error.message}` };
+    return { success: false, message: `${error.message}` };
   }
 };
 

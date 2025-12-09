@@ -600,25 +600,24 @@ export const MockService = {
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
-    // Always use local token system (Firebase requires pre-configured users)
-    const resetToken = generateResetToken(email, user.id);
-    
-    // Try Firebase email as well (won't hurt if it fails)
+    // Try Firebase email first - this is the preferred method
     const firebaseResult = await sendPasswordResetEmailToAdmin(email);
     
     if (firebaseResult.success) {
       return { 
         success: true, 
-        message: firebaseResult.message
-      };
-    } else {
-      // Firebase failed, but local token is ready
-      return { 
-        success: true, 
-        message: 'If an admin account exists with that email, a reset link has been sent.',
-        resetToken 
+        message: 'Password reset email has been sent. Please check your inbox and spam folder.'
       };
     }
+    
+    // If Firebase fails, generate local token as fallback
+    const resetToken = generateResetToken(email, user.id);
+    
+    return { 
+      success: false, 
+      message: `Unable to send email. Error: ${firebaseResult.message}. Please try again.`,
+      resetToken 
+    };
   },
 
   validatePasswordResetToken: (token: string): boolean => {
