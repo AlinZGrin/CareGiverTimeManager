@@ -368,10 +368,10 @@ export default function CaregiverDashboard() {
                             <h3 className="font-bold text-lg text-green-800">{shift.shiftName}</h3>
                           )}
                           <p className="text-sm mt-1">
-                            <span className="font-medium">Date:</span> {formatShiftDate(shift.scheduledStartTime)}
+                            <span className="font-medium text-gray-900">Date:</span> <span className="text-gray-900 font-medium">{formatShiftDate(shift.scheduledStartTime)}</span>
                           </p>
                           <p className="text-sm">
-                            <span className="font-medium">Time:</span> {formatShiftTime(shift.scheduledStartTime)} - {formatShiftTime(shift.scheduledEndTime)}
+                            <span className="font-medium text-gray-900">Time:</span> <span className="text-gray-900 font-medium">{formatShiftTime(shift.scheduledStartTime)} - {formatShiftTime(shift.scheduledEndTime)}</span>
                           </p>
                         </div>
                         
