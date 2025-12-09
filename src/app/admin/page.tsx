@@ -127,17 +127,18 @@ export default function AdminDashboard() {
   const handleCreateScheduledShift = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const date = formData.get('date') as string;
+    const startDate = formData.get('startDate') as string;
     const startTime = formData.get('startTime') as string;
+    const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
     const shiftName = formData.get('shiftName') as string;
     
-    const scheduledStart = new Date(`${date}T${startTime}`).toISOString();
-    const scheduledEnd = new Date(`${date}T${endTime}`).toISOString();
+    const scheduledStart = new Date(`${startDate}T${startTime}`).toISOString();
+    const scheduledEnd = new Date(`${endDate}T${endTime}`).toISOString();
     
     const newScheduledShift: ScheduledShift = {
       id: Date.now().toString(),
-      date: date,
+      date: startDate,
       scheduledStartTime: scheduledStart,
       scheduledEndTime: scheduledEnd,
       caregiverId: null,
@@ -162,16 +163,17 @@ export default function AdminDashboard() {
     if (!editingShift) return;
     
     const formData = new FormData(e.currentTarget);
-    const date = formData.get('date') as string;
+    const startDate = formData.get('startDate') as string;
     const startTime = formData.get('startTime') as string;
+    const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
     const shiftName = formData.get('shiftName') as string;
     
-    const scheduledStart = new Date(`${date}T${startTime}`).toISOString();
-    const scheduledEnd = new Date(`${date}T${endTime}`).toISOString();
+    const scheduledStart = new Date(`${startDate}T${startTime}`).toISOString();
+    const scheduledEnd = new Date(`${endDate}T${endTime}`).toISOString();
     
     MockService.updateScheduledShift(editingShift.id, {
-      date: date,
+      date: startDate,
       scheduledStartTime: scheduledStart,
       scheduledEndTime: scheduledEnd,
       shiftName: shiftName || undefined,
@@ -287,12 +289,12 @@ export default function AdminDashboard() {
                 {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
               </h3>
               <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="space-y-4">
-                {/* Row 1: Date and Start Time */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3">
+                {/* Row 1: Start Date and Start Time */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
                   <div className="col-span-2 md:col-span-1">
-                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Date</label>
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Start Date</label>
                     <input 
-                      name="date" 
+                      name="startDate" 
                       type="date" 
                       required 
                       className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -313,8 +315,18 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
-                {/* Row 2: End Time and Shift Name */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3">
+                {/* Row 2: End Date and End Time */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">End Date</label>
+                    <input 
+                      name="endDate" 
+                      type="date" 
+                      required 
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toISOString().split('T')[0] : ''}
+                    />
+                  </div>
                   <div className="col-span-2 md:col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">End Time</label>
                     <input 
@@ -326,6 +338,10 @@ export default function AdminDashboard() {
                       defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toTimeString().slice(0, 5) : ''}
                     />
                   </div>
+                </div>
+                
+                {/* Row 3: Shift Name */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
                   <div className="col-span-2 md:col-span-2">
                     <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Shift Name (optional)</label>
                     <input 
