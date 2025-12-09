@@ -634,6 +634,14 @@ export const MockService = {
     
     const resetToken = generateResetToken(email, user.id);
     
+    // Log reset token to console for development
+    const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
+    console.log('=== PASSWORD RESET TOKEN ===');
+    console.log('Reset Token:', resetToken);
+    console.log('Reset Link:', resetLink);
+    console.log('Token expires in 1 hour');
+    console.log('============================');
+    
     // In a real app, this would send an email
     // For now, we'll return the token so it can be used in development
     return { 
