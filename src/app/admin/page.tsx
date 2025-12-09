@@ -689,13 +689,13 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             {/* Admin Credentials */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Admin Credentials</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Admin Credentials</h3>
               <div className="space-y-4">
                 {MockService.getUsers().filter(u => u.role === 'admin').map(admin => (
                   <div key={admin.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h4 className="font-bold text-lg">{admin.name}</h4>
+                        <h4 className="font-bold text-lg text-gray-900">{admin.name}</h4>
                         <p className="text-sm text-gray-600">{admin.email}</p>
                       </div>
                       {editingCredentials?.id !== admin.id && (
@@ -779,13 +779,13 @@ export default function AdminDashboard() {
 
             {/* Caregiver Credentials */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Caregiver Credentials</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Caregiver Credentials</h3>
               <div className="space-y-4">
                 {caregivers.map(caregiver => (
                   <div key={caregiver.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h4 className="font-bold text-lg">{caregiver.name}</h4>
+                        <h4 className="font-bold text-lg text-gray-900">{caregiver.name}</h4>
                         <p className="text-sm text-gray-600">Phone: {caregiver.phone}</p>
                         <p className="text-sm text-gray-600">PIN: {showPassword[caregiver.id] ? caregiver.pin : '••••'}</p>
                       </div>
