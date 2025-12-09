@@ -1,6 +1,6 @@
 import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { getAuth, Auth, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, Auth, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 // TODO: Replace with your Firebase config from https://console.firebase.google.com
 const firebaseConfig = {
@@ -29,13 +29,11 @@ const getFirebaseApp = (): FirebaseApp | null => {
     
     // Initialize new app
     if (!firebaseConfig.apiKey) {
-      console.error('Firebase config missing API key');
       return null;
     }
     
     return initializeApp(firebaseConfig);
   } catch (error) {
-    console.error('Error getting Firebase app:', error);
     return null;
   }
 };
@@ -114,3 +112,36 @@ export const isFirebaseConfigured = (): boolean => {
   return configured;
 };
 
+// Login with Firebase Auth
+export const loginWithFirebaseAuth = async (email: string, password: string): Promise<{ success: boolean; message: string; userId?: string }> => {
+  try {
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      return { success: false, message: 'Firebase Auth is not configured.' };
+    }
+    
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return { 
+      success: true, 
+      message: 'Login successful',
+      userId: userCredential.user.uid
+    };
+  } catch (error: any) {
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      return { success: false, message: 'Invalid email or password.' };
+    } else if (error.code === 'auth/invalid-email') {
+      return { success: false, message: 'Invalid email address.' };
+    } else if (error.code === 'auth/too-many-requests') {
+      return { success: false, message: 'Too many failed attempts. Please try again later.' };
+    }
+    return { success: false, message: 'Login failed. Please try again.' };
+  }
+};
+
+// Logout from Firebase Auth
+export const logoutFromFirebaseAuth = async (): Promise<void> => {
+  const auth = getFirebaseAuth();
+  if (auth) {
+    await signOut(auth);
+  }
+};

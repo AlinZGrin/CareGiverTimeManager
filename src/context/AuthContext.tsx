@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { MockService } from '../services/mockData';
+import { loginWithFirebaseAuth, logoutFromFirebaseAuth } from '../services/firebase';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -24,18 +25,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Use Firebase for login to ensure cross-browser authentication
-      const users = await MockService.getUsersAsync();
+      // Try Firebase Auth first
+      const authResult = await loginWithFirebaseAuth(email, password);
       
-      const admin = users.find(
-        (u) => u.role === 'admin' && u.email === email && u.password === password
-      );
-      
-      if (admin) {
-        setUser(admin);
-        router.push('/admin');
-        return true;
+      if (authResult.success) {
+        // Firebase Auth successful - now get the user data from database
+        const users = await MockService.getUsersAsync();
+        const admin = users.find((u) => u.role === 'admin' && u.email === email);
+        
+        if (admin) {
+          setUser(admin);
+          router.push('/admin');
+          return true;
+        }
+        
+        // Logged into Firebase Auth but no admin user in database
+        await logoutFromFirebaseAuth();
+        return false;
       }
+      
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -51,40 +59,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Use Firebase for login to ensure cross-browser authentication
       const users = await MockService.getUsersAsync();
-      console.log('Users from Firebase:', users.length);
-      
-      users.forEach(u => {
-        if (u.role === 'caregiver') {
-          console.log('Caregiver user found:', {
-            phone: u.phone,
-            pin: u.pin,
-            isActive: u.isActive,
-            phoneMatch: u.phone === phone,
-            pinMatch: u.pin === pin
-          });
-        }
-      });
       
       const caregiver = users.find(
         (u) => u.role === 'caregiver' && u.phone === phone && u.pin === pin && u.isActive
       );
       
       if (caregiver) {
-        console.log('✓ Caregiver login successful for:', caregiver.name);
         setUser(caregiver);
         router.push('/caregiver');
         return true;
       }
-      console.log('✗ Caregiver login failed - no match found');
-      console.log('Available caregivers:', users.filter(u => u.role === 'caregiver'));
       return false;
     } catch (error) {
-      console.error('Login error:', error);
       return false;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await logoutFromFirebaseAuth();
     setUser(null);
     router.push('/');
   };
