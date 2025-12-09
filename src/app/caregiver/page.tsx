@@ -29,9 +29,13 @@ export default function CaregiverDashboard() {
 
   const loadScheduledShifts = async () => {
     if (!user) return;
-    const available = MockService.getAvailableShifts(user.id);
-    setScheduledShifts(available.filter(s => s.status === 'open'));
-    setMyShifts(available.filter(s => s.caregiverId === user.id));
+    const available = await MockService.getScheduledShiftsAsync();
+    const filtered = available.filter(s => {
+      if (!user) return false;
+      return s.status === 'open' || s.caregiverId === user.id;
+    });
+    setScheduledShifts(filtered.filter(s => s.status === 'open'));
+    setMyShifts(filtered.filter(s => s.caregiverId === user.id));
   };
 
   useEffect(() => {

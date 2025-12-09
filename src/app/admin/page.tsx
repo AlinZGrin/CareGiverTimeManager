@@ -49,10 +49,10 @@ export default function AdminDashboard() {
     const allUsers = await MockService.getUsersAsync();
     setCaregivers(allUsers.filter(u => u.role === 'caregiver'));
     
-    const allShifts = MockService.getShifts();
+    const allShifts = await MockService.getShiftsAsync();
     setShifts(allShifts);
     
-    const allScheduledShifts = MockService.getScheduledShifts();
+    const allScheduledShifts = await MockService.getScheduledShiftsAsync();
     setScheduledShifts(allScheduledShifts);
     
     const owed = allShifts

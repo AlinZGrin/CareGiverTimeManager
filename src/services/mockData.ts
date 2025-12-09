@@ -88,6 +88,104 @@ const deleteUserFromFirebase = async (userId: string) => {
   }
 };
 
+const saveShiftToFirebase = async (shift: Shift) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const shiftRef = ref(db, `shifts/${shift.id}`);
+    await set(shiftRef, shift);
+  } catch (error) {
+    console.error('Error saving shift to Firebase:', error);
+  }
+};
+
+const deleteShiftFromFirebase = async (shiftId: string) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const shiftRef = ref(db, `shifts/${shiftId}`);
+    await remove(shiftRef);
+  } catch (error) {
+    console.error('Error deleting shift from Firebase:', error);
+  }
+};
+
+const getFirebaseShiftsAsync = async (): Promise<Shift[]> => {
+  const db = getFirebaseDatabase();
+  if (!db) {
+    console.log('Firebase DB not available');
+    return [];
+  }
+  
+  try {
+    console.log('Fetching shifts from Firebase...');
+    const shiftsRef = ref(db, 'shifts');
+    const snapshot = await get(shiftsRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const shifts = Array.isArray(data) ? data : Object.values(data);
+      console.log('Fetched shifts from Firebase:', shifts.length);
+      return shifts;
+    }
+    console.log('No shifts found in Firebase');
+    return [];
+  } catch (error) {
+    console.error('Error fetching shifts from Firebase:', error);
+    return [];
+  }
+};
+
+const saveScheduledShiftToFirebase = async (shift: ScheduledShift) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const shiftRef = ref(db, `scheduled_shifts/${shift.id}`);
+    await set(shiftRef, shift);
+  } catch (error) {
+    console.error('Error saving scheduled shift to Firebase:', error);
+  }
+};
+
+const deleteScheduledShiftFromFirebase = async (shiftId: string) => {
+  const db = getFirebaseDatabase();
+  if (!db) return;
+  
+  try {
+    const shiftRef = ref(db, `scheduled_shifts/${shiftId}`);
+    await remove(shiftRef);
+  } catch (error) {
+    console.error('Error deleting scheduled shift from Firebase:', error);
+  }
+};
+
+const getFirebaseScheduledShiftsAsync = async (): Promise<ScheduledShift[]> => {
+  const db = getFirebaseDatabase();
+  if (!db) {
+    console.log('Firebase DB not available');
+    return [];
+  }
+  
+  try {
+    console.log('Fetching scheduled shifts from Firebase...');
+    const shiftsRef = ref(db, 'scheduled_shifts');
+    const snapshot = await get(shiftsRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const shifts = Array.isArray(data) ? data : Object.values(data);
+      console.log('Fetched scheduled shifts from Firebase:', shifts.length);
+      return shifts;
+    }
+    console.log('No scheduled shifts found in Firebase');
+    return [];
+  } catch (error) {
+    console.error('Error fetching scheduled shifts from Firebase:', error);
+    return [];
+  }
+};
+
 export const MockService = {
   getUsers: (): User[] => {
     if (typeof window === 'undefined') return INITIAL_USERS;
@@ -267,6 +365,20 @@ export const MockService = {
     return stored ? JSON.parse(stored) : [];
   },
 
+  getShiftsAsync: async (): Promise<Shift[]> => {
+    if (typeof window === 'undefined') return [];
+    
+    if (isFirebaseConfigured()) {
+      const fbShifts = await getFirebaseShiftsAsync();
+      if (fbShifts.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(fbShifts));
+        return fbShifts;
+      }
+    }
+    
+    return MockService.getShifts();
+  },
+
   saveShift: (shift: Shift) => {
     const shifts = MockService.getShifts();
     const index = shifts.findIndex((s) => s.id === shift.id);
@@ -276,11 +388,21 @@ export const MockService = {
       shifts.push(shift);
     }
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+    
+    // Save to Firebase if available
+    if (isFirebaseConfigured()) {
+      saveShiftToFirebase(shift);
+    }
   },
 
   deleteShift: (shiftId: string) => {
     const shifts = MockService.getShifts().filter((s) => s.id !== shiftId);
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+    
+    // Delete from Firebase if available
+    if (isFirebaseConfigured()) {
+      deleteShiftFromFirebase(shiftId);
+    }
   },
 
   getActiveShift: (caregiverId: string): Shift | undefined => {
@@ -295,6 +417,20 @@ export const MockService = {
     return stored ? JSON.parse(stored) : [];
   },
 
+  getScheduledShiftsAsync: async (): Promise<ScheduledShift[]> => {
+    if (typeof window === 'undefined') return [];
+    
+    if (isFirebaseConfigured()) {
+      const fbShifts = await getFirebaseScheduledShiftsAsync();
+      if (fbShifts.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(fbShifts));
+        return fbShifts;
+      }
+    }
+    
+    return MockService.getScheduledShifts();
+  },
+
   saveScheduledShift: (shift: ScheduledShift) => {
     const shifts = MockService.getScheduledShifts();
     const index = shifts.findIndex((s) => s.id === shift.id);
@@ -304,6 +440,11 @@ export const MockService = {
       shifts.push(shift);
     }
     localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+    
+    // Save to Firebase if available
+    if (isFirebaseConfigured()) {
+      saveScheduledShiftToFirebase(shift);
+    }
   },
 
   updateScheduledShift: (shiftId: string, updates: Partial<ScheduledShift>) => {
@@ -312,6 +453,12 @@ export const MockService = {
     if (index >= 0) {
       shifts[index] = { ...shifts[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+      
+      // Save to Firebase if available
+      if (isFirebaseConfigured()) {
+        saveScheduledShiftToFirebase(shifts[index]);
+      }
+      
       return shifts[index];
     }
     return null;
@@ -320,6 +467,11 @@ export const MockService = {
   deleteScheduledShift: (shiftId: string) => {
     const shifts = MockService.getScheduledShifts().filter((s) => s.id !== shiftId);
     localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
+    
+    // Delete from Firebase if available
+    if (isFirebaseConfigured()) {
+      deleteScheduledShiftFromFirebase(shiftId);
+    }
   },
 
   // Get available (open) shifts for a caregiver
