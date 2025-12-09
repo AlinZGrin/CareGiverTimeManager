@@ -509,15 +509,36 @@ export default function AdminDashboard() {
                 MockService.saveShift(newShift);
                 refreshData();
                 (e.target as HTMLFormElement).reset();
-              }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <select name="caregiverId" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                  <option value="">Select Caregiver</option>
-                  {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <input name="date" type="date" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                <input name="start" type="time" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                <input name="end" type="time" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                <button type="submit" className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Add Shift</button>
+              }} className="space-y-4">
+                {/* Row 1: Caregiver and Date */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Select Caregiver</label>
+                    <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                      <option value="">Select Caregiver</option>
+                      {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
+                    <input name="date" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                </div>
+
+                {/* Row 2: Start Time and End Time */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Time</label>
+                    <input name="start" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">End Time</label>
+                    <input name="end" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                </div>
+
+                {/* Row 3: Submit Button */}
+                <button type="submit" className="w-full md:w-auto bg-blue-600 text-white font-semibold p-3 rounded hover:bg-blue-700 text-sm md:text-base">Add Shift</button>
               </form>
             </div>
 
