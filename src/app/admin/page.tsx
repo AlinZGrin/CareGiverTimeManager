@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [editingShift, setEditingShift] = useState<ScheduledShift | null>(null);
   const [editingCaregiver, setEditingCaregiver] = useState<User | null>(null);
   const [editingCredentials, setEditingCredentials] = useState<User | null>(null);
+  const [editingManualShift, setEditingManualShift] = useState<Shift | null>(null);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -69,6 +70,40 @@ export default function AdminDashboard() {
       MockService.saveShift({ ...shift, isPaid: true });
       refreshData();
     }
+  };
+
+  const handleDeleteShift = (shiftId: string) => {
+    if (confirm('Are you sure you want to delete this shift?')) {
+      MockService.deleteShift(shiftId);
+      refreshData();
+    }
+  };
+
+  const handleEditShift = (shift: Shift) => {
+    setEditingManualShift(shift);
+  };
+
+  const handleUpdateShift = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingManualShift) return;
+
+    const formData = new FormData(e.currentTarget);
+    const caregiverId = formData.get('caregiverId') as string;
+    const date = formData.get('date') as string;
+    const start = formData.get('start') as string;
+    const end = formData.get('end') as string;
+
+    const startTime = new Date(`${date}T${start}`).toISOString();
+    const endTime = new Date(`${date}T${end}`).toISOString();
+
+    MockService.saveShift({
+      ...editingManualShift,
+      caregiverId,
+      startTime,
+      endTime,
+    });
+    setEditingManualShift(null);
+    refreshData();
   };
 
   const handleAddCaregiver = (e: React.FormEvent<HTMLFormElement>) => {
@@ -483,7 +518,7 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Manual Shift Entry</h3>
-              <form onSubmit={(e) => {
+              <form onSubmit={editingManualShift ? handleUpdateShift : (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const caregiverId = formData.get('caregiverId') as string;
@@ -514,14 +549,14 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Select Caregiver</label>
-                    <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift?.caregiverId || ''}>
                       <option value="">Select Caregiver</option>
                       {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
-                    <input name="date" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    <input name="date" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? editingManualShift.startTime.split('T')[0] : ''} />
                   </div>
                 </div>
 
@@ -529,16 +564,29 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Start Time</label>
-                    <input name="start" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    <input name="start" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? new Date(editingManualShift.startTime).toTimeString().slice(0, 5) : ''} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">End Time</label>
-                    <input name="end" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                    <input name="end" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift && editingManualShift.endTime ? new Date(editingManualShift.endTime).toTimeString().slice(0, 5) : ''} />
                   </div>
                 </div>
 
                 {/* Row 3: Submit Button */}
-                <button type="submit" className="w-full md:w-auto bg-blue-600 text-white font-semibold p-3 rounded hover:bg-blue-700 text-sm md:text-base">Add Shift</button>
+                <div className="flex gap-2">
+                  <button type="submit" className="flex-1 md:flex-initial bg-blue-600 text-white font-semibold p-3 rounded hover:bg-blue-700 text-sm md:text-base">
+                    {editingManualShift ? 'Update Shift' : 'Add Shift'}
+                  </button>
+                  {editingManualShift && (
+                    <button 
+                      type="button"
+                      onClick={() => setEditingManualShift(null)}
+                      className="flex-1 md:flex-initial bg-gray-400 text-white font-semibold p-3 rounded hover:bg-gray-500 text-sm md:text-base"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
@@ -578,15 +626,29 @@ export default function AdminDashboard() {
                           <span className="text-red-600 font-bold">Unpaid</span>
                         )}
                       </td>
-                      <td className="py-3">
-                        {!s.isPaid && s.endTime && (
+                      <td className="py-3 text-xs">
+                        <div className="flex gap-1 flex-wrap">
+                          {!s.isPaid && s.endTime && (
+                            <button
+                              onClick={() => handleMarkPaid(s.id)}
+                              className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                            >
+                              Mark Paid
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleMarkPaid(s.id)}
-                            className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                            onClick={() => handleEditShift(s)}
+                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                           >
-                            Mark Paid
+                            Edit
                           </button>
-                        )}
+                          <button
+                            onClick={() => handleDeleteShift(s.id)}
+                            className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
