@@ -525,13 +525,13 @@ export default function AdminDashboard() {
             <h3 className="text-lg font-bold text-gray-900 mb-4">Shift History</h3>
             <table className="min-w-full">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-2">Caregiver</th>
-                  <th className="pb-2">Date</th>
-                  <th className="pb-2">Duration</th>
-                  <th className="pb-2">Cost</th>
-                  <th className="pb-2">Status</th>
-                  <th className="pb-2">Action</th>
+                <tr className="text-left text-gray-900 font-semibold border-b">
+                  <th className="pb-2 text-xs md:text-sm">Caregiver</th>
+                  <th className="pb-2 text-xs md:text-sm">Date</th>
+                  <th className="pb-2 text-xs md:text-sm">Duration</th>
+                  <th className="pb-2 text-xs md:text-sm">Cost</th>
+                  <th className="pb-2 text-xs md:text-sm">Status</th>
+                  <th className="pb-2 text-xs md:text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -544,13 +544,13 @@ export default function AdminDashboard() {
 
                   return (
                     <tr key={s.id} className="border-b last:border-0">
-                      <td className="py-3">{caregiver?.name || 'Unknown'}</td>
-                      <td className="py-3">{start.toLocaleDateString()}</td>
-                      <td className="py-3">
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
                         {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
                       </td>
-                      <td className="py-3">${cost.toFixed(2)}</td>
-                      <td className="py-3">
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">${cost.toFixed(2)}</td>
+                      <td className="py-3 text-xs md:text-sm">
                         {s.isPaid ? (
                           <span className="text-green-600 font-bold">Paid</span>
                         ) : (
