@@ -400,16 +400,16 @@ export default function CaregiverDashboard() {
                 <div className="space-y-4">
                   <div className="border-b pb-4">
                     <h3 className="font-medium text-gray-700 mb-2">Personal Information</h3>
-                    <p className="text-sm"><span className="font-medium">Name:</span> {user.name}</p>
-                    <p className="text-sm"><span className="font-medium">Hourly Rate:</span> ${user.hourlyRate?.toFixed(2)}/hr</p>
+                    <p className="text-sm text-gray-900 font-medium"><span className="font-medium">Name:</span> {user.name}</p>
+                    <p className="text-sm text-gray-900 font-medium"><span className="font-medium">Hourly Rate:</span> ${user.hourlyRate?.toFixed(2)}/hr</p>
                   </div>
                   
                   <div className="border-b pb-4">
                     <h3 className="font-medium text-gray-700 mb-2">Login Credentials</h3>
-                    <p className="text-sm">
+                    <p className="text-sm text-gray-900 font-medium">
                       <span className="font-medium">Phone Number:</span> {user.phone}
                     </p>
-                    <p className="text-sm">
+                    <p className="text-sm text-gray-900 font-medium">
                       <span className="font-medium">PIN:</span> {showPin ? user.pin : '••••'}
                       <button
                         onClick={() => setShowPin(!showPin)}
