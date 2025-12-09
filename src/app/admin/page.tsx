@@ -389,7 +389,7 @@ export default function AdminDashboard() {
         {activeTab === 'caregivers' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Add New Caregiver</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Add New Caregiver</h3>
               <form onSubmit={handleAddCaregiver} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input name="name" placeholder="Name" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 <input name="phone" placeholder="Phone" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
@@ -400,7 +400,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
-              <h3 className="text-lg font-bold mb-4">Manage Caregivers</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Manage Caregivers</h3>
               <table className="min-w-full">
                 <thead>
                   <tr className="text-left text-gray-900 font-semibold border-b">
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
         {activeTab === 'shifts' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Manual Shift Entry</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Manual Shift Entry</h3>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
@@ -522,7 +522,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
-            <h3 className="text-lg font-bold mb-4">Shift History</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Shift History</h3>
             <table className="min-w-full">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
