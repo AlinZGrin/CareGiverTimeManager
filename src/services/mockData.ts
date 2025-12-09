@@ -51,24 +51,19 @@ const INITIAL_USERS: User[] = [
 const getFirebaseUsersAsync = async (): Promise<User[]> => {
   const db = getFirebaseDatabase();
   if (!db) {
-    console.log('Firebase DB not available');
     return [];
   }
   
   try {
-    console.log('Fetching users from Firebase...');
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
       const users = Array.isArray(data) ? data : Object.values(data);
-      console.log('Fetched users from Firebase:', users.length);
       return users;
     }
-    console.log('No users found in Firebase');
     return [];
   } catch (error) {
-    console.error('Error fetching users from Firebase:', error);
     return [];
   }
 };
@@ -81,7 +76,7 @@ const saveUserToFirebase = async (user: User) => {
     const userRef = ref(db, `users/${user.id}`);
     await set(userRef, user);
   } catch (error) {
-    console.error('Error saving user to Firebase:', error);
+    // Silent failure
   }
 };
 
@@ -93,7 +88,7 @@ const deleteUserFromFirebase = async (userId: string) => {
     const userRef = ref(db, `users/${userId}`);
     await remove(userRef);
   } catch (error) {
-    console.error('Error deleting user from Firebase:', error);
+    // Silent failure
   }
 };
 
@@ -105,7 +100,7 @@ const saveShiftToFirebase = async (shift: Shift) => {
     const shiftRef = ref(db, `shifts/${shift.id}`);
     await set(shiftRef, shift);
   } catch (error) {
-    console.error('Error saving shift to Firebase:', error);
+    // Silent failure
   }
 };
 
@@ -117,31 +112,26 @@ const deleteShiftFromFirebase = async (shiftId: string) => {
     const shiftRef = ref(db, `shifts/${shiftId}`);
     await remove(shiftRef);
   } catch (error) {
-    console.error('Error deleting shift from Firebase:', error);
+    // Silent failure
   }
 };
 
 const getFirebaseShiftsAsync = async (): Promise<Shift[]> => {
   const db = getFirebaseDatabase();
   if (!db) {
-    console.log('Firebase DB not available');
     return [];
   }
   
   try {
-    console.log('Fetching shifts from Firebase...');
     const shiftsRef = ref(db, 'shifts');
     const snapshot = await get(shiftsRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
       const shifts = Array.isArray(data) ? data : Object.values(data);
-      console.log('Fetched shifts from Firebase:', shifts.length);
       return shifts;
     }
-    console.log('No shifts found in Firebase');
     return [];
   } catch (error) {
-    console.error('Error fetching shifts from Firebase:', error);
     return [];
   }
 };
@@ -154,7 +144,7 @@ const saveScheduledShiftToFirebase = async (shift: ScheduledShift) => {
     const shiftRef = ref(db, `scheduled_shifts/${shift.id}`);
     await set(shiftRef, shift);
   } catch (error) {
-    console.error('Error saving scheduled shift to Firebase:', error);
+    // Silent failure
   }
 };
 
@@ -166,31 +156,26 @@ const deleteScheduledShiftFromFirebase = async (shiftId: string) => {
     const shiftRef = ref(db, `scheduled_shifts/${shiftId}`);
     await remove(shiftRef);
   } catch (error) {
-    console.error('Error deleting scheduled shift from Firebase:', error);
+    // Silent failure
   }
 };
 
 const getFirebaseScheduledShiftsAsync = async (): Promise<ScheduledShift[]> => {
   const db = getFirebaseDatabase();
   if (!db) {
-    console.log('Firebase DB not available');
     return [];
   }
   
   try {
-    console.log('Fetching scheduled shifts from Firebase...');
     const shiftsRef = ref(db, 'scheduled_shifts');
     const snapshot = await get(shiftsRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
       const shifts = Array.isArray(data) ? data : Object.values(data);
-      console.log('Fetched scheduled shifts from Firebase:', shifts.length);
       return shifts;
     }
-    console.log('No scheduled shifts found in Firebase');
     return [];
   } catch (error) {
-    console.error('Error fetching scheduled shifts from Firebase:', error);
     return [];
   }
 };
@@ -255,7 +240,6 @@ export const MockService = {
           // Ensure admin user is always present
           const hasAdmin = parsed.some(u => u.role === 'admin');
           if (!hasAdmin) {
-            console.warn('Admin user missing from cache, restoring defaults');
             localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
             return INITIAL_USERS;
           }
@@ -264,12 +248,10 @@ export const MockService = {
       }
       
       // If no valid data exists, initialize with defaults
-      console.log('Initializing with default users');
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
       return INITIAL_USERS;
     } catch (error) {
-      console.error('Error in getUsers, restoring defaults:', error);
       // On any error, restore defaults
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
@@ -279,23 +261,16 @@ export const MockService = {
 
   // Async version that fetches from Firebase if available
   getUsersAsync: async (): Promise<User[]> => {
-    console.log('getUsersAsync called, Firebase configured:', isFirebaseConfigured());
-    
     if (isFirebaseConfigured()) {
-      console.log('Attempting Firebase fetch...');
       const fbUsers = await getFirebaseUsersAsync();
-      console.log('Firebase users retrieved:', fbUsers.length);
       
       // If Firebase has users, merge with defaults to ensure admin is always present
       if (fbUsers.length > 0) {
-        console.log('Returning users from Firebase');
-        
         // CRITICAL: Always ensure admin user exists
         const hasAdmin = fbUsers.some(u => u.role === 'admin');
         let finalUsers = fbUsers;
         
         if (!hasAdmin) {
-          console.warn('Admin user missing from Firebase, adding default admin');
           const defaultAdmin = INITIAL_USERS.find(u => u.role === 'admin');
           if (defaultAdmin) {
             finalUsers = [defaultAdmin, ...fbUsers];
@@ -310,18 +285,14 @@ export const MockService = {
       
       // If Firebase is empty, initialize it with default users (first time setup)
       const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
-      console.log('Firebase empty. Is initialized?', !!isInitialized);
       
       if (!isInitialized) {
-        console.log('First time setup - initializing Firebase with default users');
         // First time: initialize Firebase with default users
         for (const user of INITIAL_USERS) {
-          console.log('Saving user to Firebase:', user.id);
           await saveUserToFirebase(user);
         }
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
         localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-        console.log('Returning default users');
         return INITIAL_USERS;
       }
       
@@ -330,17 +301,14 @@ export const MockService = {
       if (cached) {
         const parsedCache = JSON.parse(cached);
         if (Array.isArray(parsedCache) && parsedCache.length > 0) {
-          console.log('Returning cached users:', parsedCache.length);
           return parsedCache;
         }
       }
       
       // If cache is also empty/invalid, restore defaults
-      console.log('Cache invalid, restoring default users');
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       return INITIAL_USERS;
     }
-    console.log('Firebase not configured, using local storage');
     return MockService.getUsers();
   },
 
@@ -360,9 +328,7 @@ export const MockService = {
         users.push(user);
       }
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-      console.log('User saved successfully:', user.id);
     } catch (error) {
-      console.error('Error saving user:', error);
       // Don't fail silently - ensure at least the user is sent to Firebase
       if (isFirebaseConfigured()) {
         saveUserToFirebase(user);
@@ -383,13 +349,10 @@ export const MockService = {
           saveUserToFirebase(users[index]);
         }
         
-        console.log('User updated successfully:', userId);
         return users[index];
       }
-      console.log('User not found:', userId);
       return null;
     } catch (error) {
-      console.error('Error updating user:', error);
       return null;
     }
   },
@@ -403,10 +366,7 @@ export const MockService = {
       if (isFirebaseConfigured()) {
         deleteUserFromFirebase(userId);
       }
-      
-      console.log('User deleted successfully:', userId);
     } catch (error) {
-      console.error('Error deleting user:', error);
       // Still try to delete from Firebase if localStorage fails
       if (isFirebaseConfigured()) {
         deleteUserFromFirebase(userId);
@@ -632,49 +592,30 @@ export const MockService = {
 
   // Password reset functions
   requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
-    console.log('🔐 PASSWORD RESET: Request received for email:', email);
-    
     const users = MockService.getUsers();
-    console.log('🔐 PASSWORD RESET: Available users:', users.map(u => ({ role: u.role, email: u.email })));
-    
     const user = users.find(u => u.role === 'admin' && u.email === email);
-    console.log('🔐 PASSWORD RESET: User found:', !!user);
     
     if (!user) {
-      console.log('⚠️  PASSWORD RESET: No admin user found with email:', email);
       // For security, don't reveal if email exists
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
-    console.log('🔐 PASSWORD RESET: Generating local token...');
     // Always use local token system (Firebase requires pre-configured users)
     const resetToken = generateResetToken(email, user.id);
     
-    console.log('🔐 PASSWORD RESET: Attempting Firebase email...');
     // Try Firebase email as well (won't hurt if it fails)
     const firebaseResult = await sendPasswordResetEmailToAdmin(email);
     
-    // Log reset token to console for testing
-    const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
-    console.log('%c=== PASSWORD RESET LINK ===', 'color: blue; font-weight: bold; font-size: 14px');
-    console.log('%c🔐 Reset Token:', 'color: green; font-weight: bold', resetToken);
-    console.log('%c🔗 Reset Link:', 'color: green; font-weight: bold', resetLink);
-    console.log('%c⏱️  Token expires in 1 hour', 'color: orange; font-weight: bold');
-    console.log('%c===========================', 'color: blue; font-weight: bold; font-size: 14px');
-    
     if (firebaseResult.success) {
-      console.log('✅ Firebase email sent successfully to:', email);
       return { 
         success: true, 
         message: firebaseResult.message
       };
     } else {
       // Firebase failed, but local token is ready
-      console.log('⚠️  Firebase email unavailable, using local token system');
-      console.log('🔗 CLICK HERE TO RESET PASSWORD:', resetLink);
       return { 
         success: true, 
-        message: 'Reset link has been generated. Check your browser console for the link (F12 > Console tab), or check your email if you have Firebase configured.',
+        message: 'If an admin account exists with that email, a reset link has been sent.',
         resetToken 
       };
     }

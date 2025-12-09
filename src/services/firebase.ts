@@ -52,10 +52,8 @@ export const getFirebaseDatabase = (): Database | null => {
       }
       
       database = getDatabase(app);
-      console.log('Firebase Database initialized successfully');
     } catch (error) {
       initError = String(error);
-      console.error('Firebase Database initialization error:', error);
       return null;
     }
   }
@@ -70,16 +68,12 @@ export const getFirebaseAuth = (): Auth | null => {
       const app = getFirebaseApp();
       if (!app) {
         initError = 'Firebase app not initialized';
-        console.error('Cannot initialize Firebase Auth - app not available');
         return null;
       }
       
       auth = getAuth(app);
-      console.log('Firebase Auth initialized successfully');
-      console.log('Auth domain:', firebaseConfig.authDomain);
     } catch (error) {
       initError = String(error);
-      console.error('Firebase Auth initialization error:', error);
       return null;
     }
   }
@@ -90,31 +84,24 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
   try {
     const auth = getFirebaseAuth();
     if (!auth) {
-      console.log('Firebase Auth not configured, will use local token fallback');
       return { success: false, message: 'Firebase Auth is not configured.' };
     }
     
     // Send password reset email
     await sendPasswordResetEmail(auth, email);
-    console.log('Password reset email sent successfully via Firebase');
     return { 
       success: true, 
       message: 'Password reset email has been sent. Please check your inbox and spam folder.' 
     };
   } catch (error: any) {
-    console.error('Firebase Auth error:', error.code, error.message);
-    
     // Handle specific Firebase errors
     if (error.code === 'auth/user-not-found') {
-      console.log('Email not found in Firebase Auth. Admin account must be created in Firebase Console first.');
       return { success: false, message: 'Email not found in Firebase Authentication. Please contact your administrator.' };
     } else if (error.code === 'auth/invalid-email') {
       return { success: false, message: 'Invalid email address.' };
     } else if (error.code === 'auth/too-many-requests') {
       return { success: false, message: 'Too many reset requests. Please try again later.' };
     }
-    
-    console.log('Firebase Auth not available, will use local token fallback');
     return { success: false, message: `Firebase email service unavailable: ${error.message}` };
   }
 };
@@ -124,9 +111,6 @@ export const isFirebaseConfigured = (): boolean => {
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
     process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
   );
-  if (!configured) {
-    console.warn('Firebase not configured - missing environment variables');
-  }
   return configured;
 };
 
