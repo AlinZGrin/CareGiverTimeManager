@@ -247,7 +247,7 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             {/* Create/Edit Scheduled Shift Form */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
                 {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
               </h3>
               <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="grid grid-cols-1 md:grid-cols-5 gap-4">
