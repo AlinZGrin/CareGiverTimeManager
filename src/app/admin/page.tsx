@@ -89,18 +89,19 @@ export default function AdminDashboard() {
 
     const formData = new FormData(e.currentTarget);
     const caregiverId = formData.get('caregiverId') as string;
-    const date = formData.get('date') as string;
-    const start = formData.get('start') as string;
-    const end = formData.get('end') as string;
+    const startDate = formData.get('startDate') as string;
+    const startTime = formData.get('startTime') as string;
+    const endDate = formData.get('endDate') as string;
+    const endTime = formData.get('endTime') as string;
 
-    const startTime = new Date(`${date}T${start}`).toISOString();
-    const endTime = new Date(`${date}T${end}`).toISOString();
+    const shiftStartTime = new Date(`${startDate}T${startTime}`).toISOString();
+    const shiftEndTime = new Date(`${endDate}T${endTime}`).toISOString();
 
     MockService.saveShift({
       ...editingManualShift,
       caregiverId,
-      startTime,
-      endTime,
+      startTime: shiftStartTime,
+      endTime: shiftEndTime,
     });
     setEditingManualShift(null);
     refreshData();
@@ -522,21 +523,22 @@ export default function AdminDashboard() {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const caregiverId = formData.get('caregiverId') as string;
-                const date = formData.get('date') as string;
-                const start = formData.get('start') as string;
-                const end = formData.get('end') as string;
+                const startDate = formData.get('startDate') as string;
+                const startTime = formData.get('startTime') as string;
+                const endDate = formData.get('endDate') as string;
+                const endTime = formData.get('endTime') as string;
                 
                 const caregiver = caregivers.find(c => c.id === caregiverId);
                 if (!caregiver) return;
 
-                const startTime = new Date(`${date}T${start}`).toISOString();
-                const endTime = new Date(`${date}T${end}`).toISOString();
+                const shiftStartTime = new Date(`${startDate}T${startTime}`).toISOString();
+                const shiftEndTime = new Date(`${endDate}T${endTime}`).toISOString();
 
                 const newShift: Shift = {
                   id: Date.now().toString(),
                   caregiverId,
-                  startTime,
-                  endTime,
+                  startTime: shiftStartTime,
+                  endTime: shiftEndTime,
                   hourlyRate: caregiver.hourlyRate || 0,
                   isPaid: false,
                   status: 'completed',
@@ -545,8 +547,8 @@ export default function AdminDashboard() {
                 refreshData();
                 (e.target as HTMLFormElement).reset();
               }} className="space-y-4">
-                {/* Row 1: Caregiver and Date */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Row 1: Caregiver */}
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Select Caregiver</label>
                     <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift?.caregiverId || ''}>
@@ -554,25 +556,33 @@ export default function AdminDashboard() {
                       {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
+                </div>
+
+                {/* Row 2: Start Date and Start Time */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
-                    <input name="date" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? editingManualShift.startTime.split('T')[0] : ''} />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                    <input name="startDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? editingManualShift.startTime.split('T')[0] : ''} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Time</label>
+                    <input name="startTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? new Date(editingManualShift.startTime).toTimeString().slice(0, 5) : ''} />
                   </div>
                 </div>
 
-                {/* Row 2: Start Time and End Time */}
+                {/* Row 3: End Date and End Time */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Time</label>
-                    <input name="start" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? new Date(editingManualShift.startTime).toTimeString().slice(0, 5) : ''} />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
+                    <input name="endDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift && editingManualShift.endTime ? editingManualShift.endTime.split('T')[0] : ''} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">End Time</label>
-                    <input name="end" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift && editingManualShift.endTime ? new Date(editingManualShift.endTime).toTimeString().slice(0, 5) : ''} />
+                    <input name="endTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift && editingManualShift.endTime ? new Date(editingManualShift.endTime).toTimeString().slice(0, 5) : ''} />
                   </div>
                 </div>
 
-                {/* Row 3: Submit Button */}
+                {/* Row 4: Submit Button */}
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 md:flex-initial bg-blue-600 text-white font-semibold p-3 rounded hover:bg-blue-700 text-sm md:text-base">
                     {editingManualShift ? 'Update Shift' : 'Add Shift'}
