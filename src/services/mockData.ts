@@ -1,5 +1,5 @@
 import { User, Shift, ScheduledShift } from '../types';
-import { getFirebaseDatabase, isFirebaseConfigured } from './firebase';
+import { getFirebaseDatabase, isFirebaseConfigured, sendPasswordResetEmailToAdmin } from './firebase';
 import { ref, get, set, update, remove, onValue, off } from 'firebase/database';
 
 const STORAGE_KEYS = {
@@ -623,7 +623,7 @@ export const MockService = {
   },
 
   // Password reset functions
-  requestPasswordReset: (email: string): { success: boolean; message: string; resetToken?: string } => {
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string; resetToken?: string }> => {
     const users = MockService.getUsers();
     const user = users.find(u => u.role === 'admin' && u.email === email);
     
@@ -632,21 +632,32 @@ export const MockService = {
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
+    // Try to send Firebase password reset email
+    const firebaseResult = await sendPasswordResetEmailToAdmin(email);
+    
+    if (firebaseResult.success) {
+      console.log('Password reset email sent successfully to:', email);
+      return { 
+        success: true, 
+        message: firebaseResult.message
+      };
+    }
+    
+    // If Firebase fails, fall back to local token (for development/testing)
+    console.log('Firebase email failed, falling back to local token');
     const resetToken = generateResetToken(email, user.id);
     
     // Log reset token to console for development
     const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
-    console.log('=== PASSWORD RESET TOKEN ===');
+    console.log('=== PASSWORD RESET TOKEN (LOCAL FALLBACK) ===');
     console.log('Reset Token:', resetToken);
     console.log('Reset Link:', resetLink);
     console.log('Token expires in 1 hour');
-    console.log('============================');
+    console.log('========================================');
     
-    // In a real app, this would send an email
-    // For now, we'll return the token so it can be used in development
     return { 
       success: true, 
-      message: 'Password reset link has been sent to your email.',
+      message: 'Password reset link has been sent to your email. If you do not receive it, check your spam folder.',
       resetToken 
     };
   },

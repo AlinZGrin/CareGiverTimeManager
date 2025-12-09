@@ -74,7 +74,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotCredentials = () => {
+  const handleForgotCredentials = async () => {
     setError('');
     setForgotInfo(null);
     
@@ -103,7 +103,9 @@ export default function LoginPage() {
       const adminEmail = prompt('Enter your admin email address:');
       if (!adminEmail) return;
       
-      const result = MockService.requestPasswordReset(adminEmail);
+      setLoading(true);
+      const result = await MockService.requestPasswordReset(adminEmail);
+      setLoading(false);
       
       if (result.success) {
         setShowResetSent(true);
