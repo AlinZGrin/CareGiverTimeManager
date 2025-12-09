@@ -27,11 +27,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Try Firebase Auth first
       const authResult = await loginWithFirebaseAuth(email, password);
+      console.log('[LOGIN DEBUG] Firebase Auth result:', authResult);
       
       if (authResult.success) {
         // Firebase Auth successful - now get the user data from database
         const users = await MockService.getUsersAsync();
+        console.log('[LOGIN DEBUG] Users from database:', users.map(u => ({ id: u.id, email: u.email, role: u.role })));
+        
         const admin = users.find((u) => u.role === 'admin' && u.email === email);
+        console.log('[LOGIN DEBUG] Admin found:', admin);
         
         if (admin) {
           setUser(admin);
@@ -40,13 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         // Logged into Firebase Auth but no admin user in database
+        console.log('[LOGIN DEBUG] No admin found in database, logging out from Firebase Auth');
         await logoutFromFirebaseAuth();
         return false;
       }
       
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[LOGIN DEBUG] Login error:', error);
       return false;
     }
   };
