@@ -91,9 +91,14 @@ export const getFirebaseAuth = (): Auth | null => {
 
 export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ success: boolean; message: string }> => {
   try {
+    // Check if Firebase config is loaded
+    if (!firebaseConfig.apiKey || !firebaseConfig.authDomain) {
+      return { success: false, message: 'Firebase configuration is missing. Please check environment variables.' };
+    }
+    
     const auth = getFirebaseAuth();
     if (!auth) {
-      return { success: false, message: 'Firebase Auth is not configured.' };
+      return { success: false, message: 'Firebase Auth failed to initialize. Please refresh the page and try again.' };
     }
     
     // Send password reset email
@@ -105,13 +110,13 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
   } catch (error: any) {
     // Handle specific Firebase errors
     if (error.code === 'auth/user-not-found') {
-      return { success: false, message: 'Email not found in Firebase Authentication. Please contact your administrator.' };
+      return { success: false, message: 'No account found with that email address.' };
     } else if (error.code === 'auth/invalid-email') {
-      return { success: false, message: 'Invalid email address.' };
+      return { success: false, message: 'Invalid email address format.' };
     } else if (error.code === 'auth/too-many-requests') {
-      return { success: false, message: 'Too many reset requests. Please try again later.' };
+      return { success: false, message: 'Too many password reset attempts. Please wait a few minutes and try again.' };
     }
-    return { success: false, message: `${error.message}` };
+    return { success: false, message: `${error.code || 'Error'}: ${error.message || 'Unknown error occurred'}` };
   }
 };
 

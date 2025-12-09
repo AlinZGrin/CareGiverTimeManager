@@ -601,23 +601,28 @@ export const MockService = {
     }
     
     // Try Firebase email first - this is the preferred method
-    const firebaseResult = await sendPasswordResetEmailToAdmin(email);
-    
-    if (firebaseResult.success) {
+    try {
+      const firebaseResult = await sendPasswordResetEmailToAdmin(email);
+      
+      if (firebaseResult.success) {
+        return { 
+          success: true, 
+          message: 'Password reset email has been sent. Please check your inbox and spam folder.'
+        };
+      }
+      
+      // If Firebase fails, show the actual error
       return { 
-        success: true, 
-        message: 'Password reset email has been sent. Please check your inbox and spam folder.'
+        success: false, 
+        message: `Unable to send email: ${firebaseResult.message}. Please try again or contact support.`
+      };
+    } catch (error: any) {
+      // Unexpected error
+      return { 
+        success: false, 
+        message: `Error sending reset email: ${error.message || 'Unknown error'}. Please try again.`
       };
     }
-    
-    // If Firebase fails, generate local token as fallback
-    const resetToken = generateResetToken(email, user.id);
-    
-    return { 
-      success: false, 
-      message: `Unable to send email. Error: ${firebaseResult.message}. Please try again.`,
-      resetToken 
-    };
   },
 
   validatePasswordResetToken: (token: string): boolean => {
