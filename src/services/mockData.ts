@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   SHIFTS: 'cgtm_shifts',
   SCHEDULED_SHIFTS: 'cgtm_scheduled_shifts',
   INITIALIZED: 'cgtm_initialized',
+  RESET_TOKENS: 'cgtm_reset_tokens',
 };
 
 const INITIAL_USERS: User[] = [
@@ -184,6 +185,52 @@ const getFirebaseScheduledShiftsAsync = async (): Promise<ScheduledShift[]> => {
     console.error('Error fetching scheduled shifts from Firebase:', error);
     return [];
   }
+};
+
+// Password reset token management
+interface ResetToken {
+  token: string;
+  userId: string;
+  email: string;
+  expiresAt: number;
+}
+
+const generateResetToken = (email: string, userId: string): string => {
+  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const resetTokens: ResetToken[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.RESET_TOKENS) || '[]');
+  
+  // Remove any existing tokens for this email
+  const filtered = resetTokens.filter(t => t.email !== email);
+  
+  // Add new token with 1 hour expiration
+  const newToken: ResetToken = {
+    token,
+    userId,
+    email,
+    expiresAt: Date.now() + (60 * 60 * 1000), // 1 hour
+  };
+  
+  filtered.push(newToken);
+  localStorage.setItem(STORAGE_KEYS.RESET_TOKENS, JSON.stringify(filtered));
+  
+  return token;
+};
+
+const validateResetToken = (token: string): { userId: string; email: string } | null => {
+  const resetTokens: ResetToken[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.RESET_TOKENS) || '[]');
+  const resetToken = resetTokens.find(t => t.token === token && t.expiresAt > Date.now());
+  
+  if (!resetToken) {
+    return null;
+  }
+  
+  return { userId: resetToken.userId, email: resetToken.email };
+};
+
+const clearResetToken = (token: string) => {
+  const resetTokens: ResetToken[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.RESET_TOKENS) || '[]');
+  const filtered = resetTokens.filter(t => t.token !== token);
+  localStorage.setItem(STORAGE_KEYS.RESET_TOKENS, JSON.stringify(filtered));
 };
 
 export const MockService = {
@@ -573,5 +620,64 @@ export const MockService = {
   // Clear initialization flag to allow reset on next load
   clearInitialization: () => {
     localStorage.removeItem(STORAGE_KEYS.INITIALIZED);
+  },
+
+  // Password reset functions
+  requestPasswordReset: (email: string): { success: boolean; message: string; resetToken?: string } => {
+    const users = MockService.getUsers();
+    const user = users.find(u => u.role === 'admin' && u.email === email);
+    
+    if (!user) {
+      // For security, don't reveal if email exists
+      return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
+    }
+    
+    const resetToken = generateResetToken(email, user.id);
+    
+    // In a real app, this would send an email
+    // For now, we'll return the token so it can be used in development
+    return { 
+      success: true, 
+      message: 'Password reset link has been sent to your email.',
+      resetToken 
+    };
+  },
+
+  validatePasswordResetToken: (token: string): boolean => {
+    return validateResetToken(token) !== null;
+  },
+
+  resetPasswordWithToken: (token: string, newPassword: string): { success: boolean; message: string } => {
+    const resetInfo = validateResetToken(token);
+    
+    if (!resetInfo) {
+      return { success: false, message: 'Invalid or expired reset token.' };
+    }
+    
+    if (newPassword.length < 6) {
+      return { success: false, message: 'Password must be at least 6 characters.' };
+    }
+    
+    const users = MockService.getUsers();
+    const userIndex = users.findIndex(u => u.id === resetInfo.userId);
+    
+    if (userIndex === -1) {
+      return { success: false, message: 'User not found.' };
+    }
+    
+    users[userIndex].password = newPassword;
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    clearResetToken(token);
+    
+    // Save to Firebase if available
+    if (isFirebaseConfigured()) {
+      const db = getFirebaseDatabase();
+      if (db) {
+        const userRef = ref(db, `users/${resetInfo.userId}`);
+        set(userRef, users[userIndex]);
+      }
+    }
+    
+    return { success: true, message: 'Password has been reset successfully.' };
   },
 };

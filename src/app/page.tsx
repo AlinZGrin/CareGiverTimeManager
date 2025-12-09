@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showResetSent, setShowResetSent] = useState(false);
   const [forgotInfo, setForgotInfo] = useState<{ name?: string; phone?: string; email?: string } | null>(null);
 
   // Reset form state when component mounts
@@ -98,17 +99,19 @@ export default function LoginPage() {
         setError('No caregiver found with that name. Please contact your administrator.');
       }
     } else {
-      // For admins, show all admin accounts
-      const users = JSON.parse(localStorage.getItem('cgtm_users') || '[]');
-      const admin = users.find((u: User) => u.role === 'admin');
+      // For admins, prompt for email and send reset link
+      const adminEmail = prompt('Enter your admin email address:');
+      if (!adminEmail) return;
       
-      if (admin) {
-        setForgotInfo({
-          email: admin.email,
-        });
-        setShowForgotModal(true);
+      const result = MockService.requestPasswordReset(adminEmail);
+      
+      if (result.success) {
+        setShowResetSent(true);
+        setForgotInfo({ email: adminEmail });
+        // Clear message after 5 seconds
+        setTimeout(() => setShowResetSent(false), 5000);
       } else {
-        setError('No admin account found. Please contact support.');
+        setError(result.message);
       }
     }
   };
@@ -213,7 +216,7 @@ export default function LoginPage() {
       </div>
 
       {/* Forgot Credentials Modal */}
-      {showForgotModal && forgotInfo && (
+      {showForgotModal && forgotInfo && !showResetSent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
             <h2 className="text-xl font-bold text-gray-800 mb-4">
@@ -262,6 +265,39 @@ export default function LoginPage() {
               className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Email Sent Message */}
+      {showResetSent && forgotInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-green-600 mb-4">Reset Link Sent</h2>
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded p-4">
+                <p className="text-sm text-green-800 mb-2">
+                  A password reset link has been sent to:
+                </p>
+                <p className="font-semibold text-gray-900">{forgotInfo.email}</p>
+              </div>
+              <p className="text-sm text-gray-600">
+                Please check your email for a link to reset your password. The link will expire in 1 hour.
+              </p>
+              <p className="text-xs text-gray-500">
+                <strong>For development:</strong> You can use the debug page to access the reset link.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                setShowResetSent(false);
+                setForgotInfo(null);
+              }}
+              className="w-full mt-4 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              OK
             </button>
           </div>
         </div>
