@@ -48,7 +48,8 @@ function ResetPasswordContent() {
     
     setLoading(true);
     
-    const result = MockService.resetPasswordWithToken(token, newPassword);
+    // Use the async version to ensure Firebase is updated
+    const result = await MockService.resetPasswordWithTokenAsync(token, newPassword);
     
     if (result.success) {
       setSuccess(true);

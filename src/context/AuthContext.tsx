@@ -23,39 +23,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
-    console.log('=== ADMIN LOGIN ATTEMPT ===');
-    console.log('Input email:', email);
-    console.log('Input password:', password);
-    
     try {
       // Use Firebase for login to ensure cross-browser authentication
       const users = await MockService.getUsersAsync();
-      console.log('Users from Firebase:', users.length);
-      console.log('All users:', JSON.stringify(users, null, 2));
-      
-      users.forEach(u => {
-        if (u.role === 'admin') {
-          console.log('Admin user found:', {
-            email: u.email,
-            password: u.password,
-            emailMatch: u.email === email,
-            passwordMatch: u.password === password
-          });
-        }
-      });
       
       const admin = users.find(
         (u) => u.role === 'admin' && u.email === email && u.password === password
       );
       
       if (admin) {
-        console.log('✓ Admin login successful for:', admin.email);
         setUser(admin);
         router.push('/admin');
         return true;
       }
-      console.log('✗ Admin login failed - no match found');
-      console.log('Available admin users:', users.filter(u => u.role === 'admin'));
       return false;
     } catch (error) {
       console.error('Login error:', error);

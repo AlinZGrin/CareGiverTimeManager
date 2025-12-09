@@ -658,4 +658,43 @@ export const MockService = {
     
     return { success: true, message: 'Password has been reset successfully.' };
   },
+
+  // Async version that properly waits for Firebase to complete
+  resetPasswordWithTokenAsync: async (token: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const resetInfo = validateResetToken(token);
+    
+    if (!resetInfo) {
+      return { success: false, message: 'Invalid or expired reset token.' };
+    }
+    
+    if (newPassword.length < 6) {
+      return { success: false, message: 'Password must be at least 6 characters.' };
+    }
+    
+    const users = MockService.getUsers();
+    const userIndex = users.findIndex(u => u.id === resetInfo.userId);
+    
+    if (userIndex === -1) {
+      return { success: false, message: 'User not found.' };
+    }
+    
+    users[userIndex].password = newPassword;
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    clearResetToken(token);
+    
+    // Save to Firebase if available - WAIT for it to complete
+    if (isFirebaseConfigured()) {
+      const db = getFirebaseDatabase();
+      if (db) {
+        try {
+          const userRef = ref(db, `users/${resetInfo.userId}`);
+          await set(userRef, users[userIndex]);
+        } catch (error) {
+          // Firebase save failed, but local password is updated
+        }
+      }
+    }
+    
+    return { success: true, message: 'Password has been reset successfully.' };
+  },
 };

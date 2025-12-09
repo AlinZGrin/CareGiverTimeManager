@@ -68,7 +68,6 @@ export default function LoginPage() {
       }
     } catch (err) {
       setError('Login failed. Please try again.');
-      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
