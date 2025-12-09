@@ -250,47 +250,68 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-bold text-gray-900 mb-4">
                 {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
               </h3>
-              <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <input 
-                  name="date" 
-                  type="date" 
-                  required 
-                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  min={new Date().toISOString().split('T')[0]}
-                  defaultValue={editingShift ? editingShift.date : ''}
-                />
-                <input 
-                  name="startTime" 
-                  type="time" 
-                  required 
-                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
-                  placeholder="Start Time"
-                  defaultValue={editingShift ? new Date(editingShift.scheduledStartTime).toTimeString().slice(0, 5) : ''}
-                />
-                <input 
-                  name="endTime" 
-                  type="time" 
-                  required 
-                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
-                  placeholder="End Time"
-                  defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toTimeString().slice(0, 5) : ''}
-                />
-                <input 
-                  name="shiftName" 
-                  type="text" 
-                  placeholder="Shift Name (optional)" 
-                  className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  defaultValue={editingShift ? editingShift.shiftName || '' : ''}
-                />
+              <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="space-y-4">
+                {/* Row 1: Date and Start Time */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Date</label>
+                    <input 
+                      name="date" 
+                      type="date" 
+                      required 
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      min={new Date().toISOString().split('T')[0]}
+                      defaultValue={editingShift ? editingShift.date : ''}
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Start Time</label>
+                    <input 
+                      name="startTime" 
+                      type="time" 
+                      required 
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
+                      placeholder="Start Time"
+                      defaultValue={editingShift ? new Date(editingShift.scheduledStartTime).toTimeString().slice(0, 5) : ''}
+                    />
+                  </div>
+                </div>
+                
+                {/* Row 2: End Time and Shift Name */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">End Time</label>
+                    <input 
+                      name="endTime" 
+                      type="time" 
+                      required 
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
+                      placeholder="End Time"
+                      defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toTimeString().slice(0, 5) : ''}
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 md:hidden mb-1">Shift Name (optional)</label>
+                    <input 
+                      name="shiftName" 
+                      type="text" 
+                      placeholder="Shift Name (optional)" 
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      defaultValue={editingShift ? editingShift.shiftName || '' : ''}
+                    />
+                  </div>
+                </div>
+                
+                {/* Row 3: Buttons */}
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 bg-green-600 text-white p-2 rounded hover:bg-green-700">
+                  <button type="submit" className="flex-1 bg-green-600 text-white font-semibold p-3 rounded hover:bg-green-700 text-sm md:text-base">
                     {editingShift ? 'Update' : 'Publish'}
                   </button>
                   {editingShift && (
                     <button 
                       type="button"
                       onClick={() => setEditingShift(null)}
-                      className="bg-gray-400 text-white px-4 p-2 rounded hover:bg-gray-500"
+                      className="flex-1 bg-gray-400 text-white font-semibold p-3 rounded hover:bg-gray-500 text-sm md:text-base"
                     >
                       Cancel
                     </button>
@@ -301,7 +322,7 @@ export default function AdminDashboard() {
 
             {/* Scheduled Shifts List */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Scheduled Shifts</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Scheduled Shifts</h3>
               
               {scheduledShifts.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No scheduled shifts yet. Create one above!</p>
