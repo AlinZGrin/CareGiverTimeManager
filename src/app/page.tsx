@@ -286,9 +286,6 @@ export default function LoginPage() {
               <p className="text-sm text-gray-600">
                 Please check your email for a link to reset your password. The link will expire in 1 hour.
               </p>
-              <p className="text-xs text-gray-500">
-                <strong>For development:</strong> You can use the debug page to access the reset link.
-              </p>
             </div>
             
             <button
