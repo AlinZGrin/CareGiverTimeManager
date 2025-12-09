@@ -70,28 +70,32 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
   try {
     const auth = getFirebaseAuth();
     if (!auth) {
+      console.log('Firebase Auth not configured, will use local token fallback');
       return { success: false, message: 'Firebase Auth is not configured.' };
     }
     
     // Send password reset email
     await sendPasswordResetEmail(auth, email);
+    console.log('Password reset email sent successfully via Firebase');
     return { 
       success: true, 
       message: 'Password reset email has been sent. Please check your inbox and spam folder.' 
     };
   } catch (error: any) {
-    console.error('Error sending password reset email:', error);
+    console.error('Firebase Auth error:', error.code, error.message);
     
     // Handle specific Firebase errors
     if (error.code === 'auth/user-not-found') {
-      return { success: true, message: 'If an account exists with that email, a reset link has been sent.' };
+      console.log('Email not found in Firebase Auth. Admin account must be created in Firebase Console first.');
+      return { success: false, message: 'Email not found in Firebase Authentication. Please contact your administrator.' };
     } else if (error.code === 'auth/invalid-email') {
       return { success: false, message: 'Invalid email address.' };
     } else if (error.code === 'auth/too-many-requests') {
       return { success: false, message: 'Too many reset requests. Please try again later.' };
     }
     
-    return { success: false, message: `Error sending reset email: ${error.message}` };
+    console.log('Firebase Auth not available, will use local token fallback');
+    return { success: false, message: `Firebase email service unavailable: ${error.message}` };
   }
 };
 

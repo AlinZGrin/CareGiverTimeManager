@@ -632,34 +632,35 @@ export const MockService = {
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
-    // Try to send Firebase password reset email
+    // Always use local token system (Firebase requires pre-configured users)
+    const resetToken = generateResetToken(email, user.id);
+    
+    // Try Firebase email as well (won't hurt if it fails)
     const firebaseResult = await sendPasswordResetEmailToAdmin(email);
     
+    // Log reset token to console for testing
+    const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
+    console.log('=== PASSWORD RESET LINK ===');
+    console.log('🔐 Reset Token:', resetToken);
+    console.log('🔗 Reset Link:', resetLink);
+    console.log('⏱️  Token expires in 1 hour');
+    console.log('===========================');
+    
     if (firebaseResult.success) {
-      console.log('Password reset email sent successfully to:', email);
+      console.log('✅ Firebase email sent successfully');
       return { 
         success: true, 
         message: firebaseResult.message
       };
+    } else {
+      // Firebase failed, but local token is ready
+      console.log('⚠️  Firebase email unavailable, using local token system');
+      return { 
+        success: true, 
+        message: 'Reset link has been generated. Check your browser console for the link (F12 > Console tab), or check your email if you have Firebase configured.',
+        resetToken 
+      };
     }
-    
-    // If Firebase fails, fall back to local token (for development/testing)
-    console.log('Firebase email failed, falling back to local token');
-    const resetToken = generateResetToken(email, user.id);
-    
-    // Log reset token to console for development
-    const resetLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password?token=${resetToken}`;
-    console.log('=== PASSWORD RESET TOKEN (LOCAL FALLBACK) ===');
-    console.log('Reset Token:', resetToken);
-    console.log('Reset Link:', resetLink);
-    console.log('Token expires in 1 hour');
-    console.log('========================================');
-    
-    return { 
-      success: true, 
-      message: 'Password reset link has been sent to your email. If you do not receive it, check your spam folder.',
-      resetToken 
-    };
   },
 
   validatePasswordResetToken: (token: string): boolean => {
