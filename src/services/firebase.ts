@@ -93,21 +93,29 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
   try {
     // Check if Firebase config is loaded
     if (!firebaseConfig.apiKey || !firebaseConfig.authDomain) {
+      console.warn('[PASSWORD RESET] Firebase config missing', {
+        hasApiKey: !!firebaseConfig.apiKey,
+        hasAuthDomain: !!firebaseConfig.authDomain
+      });
       return { success: false, message: 'Firebase configuration is missing. Please check environment variables.' };
     }
     
     const auth = getFirebaseAuth();
     if (!auth) {
+      console.warn('[PASSWORD RESET] Firebase Auth not initialized');
       return { success: false, message: 'Firebase Auth failed to initialize. Please refresh the page and try again.' };
     }
     
+    console.log('[PASSWORD RESET] Sending reset email to:', email);
     // Send password reset email
     await sendPasswordResetEmail(auth, email);
+    console.log('[PASSWORD RESET] Email sent successfully');
     return { 
       success: true, 
       message: 'Password reset email has been sent. Please check your inbox and spam folder.' 
     };
   } catch (error: any) {
+    console.error('[PASSWORD RESET] Error:', error.code, error.message);
     // Handle specific Firebase errors
     if (error.code === 'auth/user-not-found') {
       return { success: false, message: 'No account found with that email address.' };
