@@ -45,15 +45,24 @@ export default function CaregiverDashboard() {
       return;
     }
     
-    // Load active shift
-    const shift = MockService.getActiveShift(user.id);
-    setActiveShift(shift);
+    const refreshActiveShift = () => {
+      // Always fetch fresh active shift data
+      const shift = MockService.getActiveShift(user.id);
+      setActiveShift(shift);
+    };
+    
+    // Initial load
+    refreshActiveShift();
     
     // Load scheduled shifts
     loadScheduledShifts();
     
-    // Set up interval to sync every 2 seconds
-    const interval = setInterval(loadScheduledShifts, 2000);
+    // Set up interval to sync active shift and scheduled shifts every 2 seconds
+    const interval = setInterval(() => {
+      refreshActiveShift();
+      loadScheduledShifts();
+    }, 2000);
+    
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
@@ -114,22 +123,45 @@ export default function CaregiverDashboard() {
     setLastShiftSummary(null);
   };
 
-  const handleConfirmHandoff = () => {
-    if (!concurrentShiftWarning) return;
+  const handleConfirmHandoff = async () => {
+    if (!concurrentShiftWarning || !user) return;
     
-    // Clock out the other caregiver
-    MockService.clockOutShift(concurrentShiftWarning.shiftId);
+    // Store caregiver name before clearing state
+    const previousCaregiverName = concurrentShiftWarning.caregiverName;
     
-    // Close warning modal
+    // Close warning modal first to prevent double-clicks
     setConcurrentShiftWarning(null);
     
-    // Clock in current user
-    proceedWithClockIn();
+    // Step 1: Clock out the other caregiver and wait for completion
+    const shifts = MockService.getShifts();
+    const shiftToEnd = shifts.find(s => s.id === concurrentShiftWarning.shiftId);
+    
+    if (shiftToEnd && shiftToEnd.status === 'in-progress') {
+      const endTime = new Date().toISOString();
+      const updatedShift = { ...shiftToEnd, endTime, status: 'completed' as const };
+      MockService.saveShift(updatedShift);
+    }
+    
+    // Step 2: Small delay to ensure Firebase sync
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 3: Clock in current user
+    const newShift: Shift = {
+      id: Date.now().toString(),
+      caregiverId: user.id,
+      startTime: new Date().toISOString(),
+      hourlyRate: user.hourlyRate || 0,
+      isPaid: false,
+      status: 'in-progress',
+    };
+    MockService.saveShift(newShift);
+    setActiveShift(newShift);
+    setLastShiftSummary(null);
     
     // Show success message
     setFeedbackMessage({ 
       type: 'success', 
-      text: `${concurrentShiftWarning.caregiverName} has been clocked out. Your shift has started.` 
+      text: `${previousCaregiverName} has been clocked out. Your shift has started.` 
     });
     setTimeout(() => setFeedbackMessage(null), 3000);
   };
