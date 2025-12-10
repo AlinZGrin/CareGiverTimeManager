@@ -431,6 +431,34 @@ export const MockService = {
     return shifts.find((s) => s.caregiverId === caregiverId && !s.endTime && s.status === 'in-progress');
   },
 
+  // Get any active shift in the system (for concurrent shift prevention)
+  getAnyActiveShift: (): { shift: Shift; caregiverName: string } | null => {
+    const shifts = MockService.getShifts();
+    const activeShift = shifts.find((s) => !s.endTime && s.status === 'in-progress');
+    
+    if (!activeShift) return null;
+    
+    const users = MockService.getUsers();
+    const caregiver = users.find(u => u.id === activeShift.caregiverId);
+    
+    return {
+      shift: activeShift,
+      caregiverName: caregiver?.name || 'Unknown Caregiver'
+    };
+  },
+
+  // Clock out a specific shift (for smart handoff)
+  clockOutShift: (shiftId: string): void => {
+    const shifts = MockService.getShifts();
+    const shift = shifts.find(s => s.id === shiftId);
+    
+    if (shift && shift.status === 'in-progress') {
+      const endTime = new Date().toISOString();
+      const updatedShift = { ...shift, endTime, status: 'completed' as const };
+      MockService.saveShift(updatedShift);
+    }
+  },
+
   // Scheduled Shifts Management
   getScheduledShifts: (): ScheduledShift[] => {
     if (typeof window === 'undefined') return [];

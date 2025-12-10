@@ -26,6 +26,7 @@ export default function CaregiverDashboard() {
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
+  const [concurrentShiftWarning, setConcurrentShiftWarning] = useState<{ caregiverName: string; shiftId: string } | null>(null);
 
   const loadScheduledShifts = async () => {
     if (!user) return;
@@ -81,6 +82,25 @@ export default function CaregiverDashboard() {
 
   const handleClockIn = () => {
     if (!user) return;
+    
+    // Check for concurrent shifts (Smart Handoff)
+    const activeShiftInfo = MockService.getAnyActiveShift();
+    
+    if (activeShiftInfo && activeShiftInfo.shift.caregiverId !== user.id) {
+      // Another caregiver is clocked in - show warning
+      setConcurrentShiftWarning({
+        caregiverName: activeShiftInfo.caregiverName,
+        shiftId: activeShiftInfo.shift.id
+      });
+      return;
+    }
+    
+    // No concurrent shift - proceed with clock in
+    proceedWithClockIn();
+  };
+
+  const proceedWithClockIn = () => {
+    if (!user) return;
     const newShift: Shift = {
       id: Date.now().toString(),
       caregiverId: user.id,
@@ -92,6 +112,30 @@ export default function CaregiverDashboard() {
     MockService.saveShift(newShift);
     setActiveShift(newShift);
     setLastShiftSummary(null);
+  };
+
+  const handleConfirmHandoff = () => {
+    if (!concurrentShiftWarning) return;
+    
+    // Clock out the other caregiver
+    MockService.clockOutShift(concurrentShiftWarning.shiftId);
+    
+    // Close warning modal
+    setConcurrentShiftWarning(null);
+    
+    // Clock in current user
+    proceedWithClockIn();
+    
+    // Show success message
+    setFeedbackMessage({ 
+      type: 'success', 
+      text: `${concurrentShiftWarning.caregiverName} has been clocked out. Your shift has started.` 
+    });
+    setTimeout(() => setFeedbackMessage(null), 3000);
+  };
+
+  const handleCancelHandoff = () => {
+    setConcurrentShiftWarning(null);
   };
 
   const handleClockOut = () => {
@@ -524,6 +568,46 @@ export default function CaregiverDashboard() {
           </div>
         )}
       </main>
+
+      {/* Smart Handoff Warning Modal */}
+      {concurrentShiftWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center mb-4">
+              <div className="bg-yellow-100 rounded-full p-3 mr-3">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Concurrent Shift Detected</h3>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 mb-3">
+                <strong className="text-gray-900">{concurrentShiftWarning.caregiverName}</strong> is currently clocked in.
+              </p>
+              <p className="text-gray-700">
+                Starting your shift will automatically clock them out immediately. Do you want to proceed?
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmHandoff}
+                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition"
+              >
+                Yes, Clock Me In
+              </button>
+              <button
+                onClick={handleCancelHandoff}
+                className="flex-1 bg-gray-300 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
