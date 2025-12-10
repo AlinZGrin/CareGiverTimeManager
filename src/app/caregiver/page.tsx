@@ -27,6 +27,27 @@ export default function CaregiverDashboard() {
   const [showPin, setShowPin] = useState(false);
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
   const [concurrentShiftWarning, setConcurrentShiftWarning] = useState<{ caregiverName: string; shiftId: string } | null>(null);
+  const [totalOwed, setTotalOwed] = useState<number>(0);
+
+  const calculateTotalOwed = async () => {
+    if (!user) return;
+    const shifts = await MockService.getShiftsAsync();
+    const unpaidShifts = shifts.filter(s => 
+      s.caregiverId === user.id && 
+      s.status === 'completed' && 
+      !s.isPaid && 
+      s.endTime
+    );
+    
+    const total = unpaidShifts.reduce((sum, shift) => {
+      const start = new Date(shift.startTime).getTime();
+      const end = new Date(shift.endTime!).getTime();
+      const hours = (end - start) / (1000 * 60 * 60);
+      return sum + (hours * shift.hourlyRate);
+    }, 0);
+    
+    setTotalOwed(total);
+  };
 
   const loadScheduledShifts = async () => {
     if (!user) return;
@@ -57,10 +78,14 @@ export default function CaregiverDashboard() {
     // Load scheduled shifts
     loadScheduledShifts();
     
+    // Calculate total owed
+    calculateTotalOwed();
+    
     // Set up interval to sync active shift and scheduled shifts every 2 seconds
     const interval = setInterval(() => {
       refreshActiveShift();
       loadScheduledShifts();
+      calculateTotalOwed();
     }, 2000);
     
     return () => clearInterval(interval);
@@ -280,7 +305,12 @@ export default function CaregiverDashboard() {
       <header className="bg-white shadow p-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <Image src="/icon.png" alt="Logo" width={40} height={40} />
-          <h1 className="text-lg font-bold text-gray-800">Hi, {user.name}</h1>
+          <div>
+            <h1 className="text-lg font-bold text-gray-800">Hi, {user.name}</h1>
+            <p className="text-sm text-green-600 font-semibold">
+              Owed: ${totalOwed.toFixed(2)}
+            </p>
+          </div>
         </div>
         <button onClick={logout} className="text-sm text-red-600 font-medium">Logout</button>
       </header>
