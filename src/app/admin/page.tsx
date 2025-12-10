@@ -655,7 +655,10 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="text-left text-gray-900 font-semibold border-b">
                   <th className="pb-2 text-xs md:text-sm">Caregiver</th>
-                  <th className="pb-2 text-xs md:text-sm">Date</th>
+                  <th className="pb-2 text-xs md:text-sm">Start Date</th>
+                  <th className="pb-2 text-xs md:text-sm">Start Time</th>
+                  <th className="pb-2 text-xs md:text-sm">End Date</th>
+                  <th className="pb-2 text-xs md:text-sm">End Time</th>
                   <th className="pb-2 text-xs md:text-sm">Duration</th>
                   <th className="pb-2 text-xs md:text-sm">Cost</th>
                   <th className="pb-2 text-xs md:text-sm">Status</th>
@@ -674,6 +677,9 @@ export default function AdminDashboard() {
                     <tr key={s.id} className="border-b last:border-0">
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleDateString() : '-'}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
                         {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
                       </td>
