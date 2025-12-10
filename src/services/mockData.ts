@@ -431,6 +431,12 @@ export const MockService = {
     return shifts.find((s) => s.caregiverId === caregiverId && !s.endTime && s.status === 'in-progress');
   },
 
+  // Async version that fetches from Firebase
+  getActiveShiftAsync: async (caregiverId: string): Promise<Shift | undefined> => {
+    const shifts = await MockService.getShiftsAsync();
+    return shifts.find((s) => s.caregiverId === caregiverId && !s.endTime && s.status === 'in-progress');
+  },
+
   // Get any active shift in the system (for concurrent shift prevention)
   getAnyActiveShift: (): { shift: Shift; caregiverName: string } | null => {
     const shifts = MockService.getShifts();

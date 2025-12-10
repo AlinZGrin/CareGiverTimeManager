@@ -45,9 +45,9 @@ export default function CaregiverDashboard() {
       return;
     }
     
-    const refreshActiveShift = () => {
-      // Always fetch fresh active shift data
-      const shift = MockService.getActiveShift(user.id);
+    const refreshActiveShift = async () => {
+      // Always fetch fresh active shift data from Firebase
+      const shift = await MockService.getActiveShiftAsync(user.id);
       setActiveShift(shift);
     };
     
