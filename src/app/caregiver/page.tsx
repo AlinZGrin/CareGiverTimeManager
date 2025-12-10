@@ -89,11 +89,11 @@ export default function CaregiverDashboard() {
     return () => clearInterval(interval);
   }, [activeShift]);
 
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     if (!user) return;
     
-    // Check for concurrent shifts (Smart Handoff)
-    const activeShiftInfo = MockService.getAnyActiveShift();
+    // Check for concurrent shifts (Smart Handoff) - use async to get real-time Firebase data
+    const activeShiftInfo = await MockService.getAnyActiveShiftAsync();
     
     if (activeShiftInfo && activeShiftInfo.shift.caregiverId !== user.id) {
       // Another caregiver is clocked in - show warning
@@ -132,8 +132,8 @@ export default function CaregiverDashboard() {
     // Close warning modal first to prevent double-clicks
     setConcurrentShiftWarning(null);
     
-    // Step 1: Clock out the other caregiver and wait for completion
-    const shifts = MockService.getShifts();
+    // Step 1: Get fresh shift data and clock out the other caregiver
+    const shifts = await MockService.getShiftsAsync();
     const shiftToEnd = shifts.find(s => s.id === concurrentShiftWarning.shiftId);
     
     if (shiftToEnd && shiftToEnd.status === 'in-progress') {

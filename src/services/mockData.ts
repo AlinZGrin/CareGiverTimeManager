@@ -447,6 +447,22 @@ export const MockService = {
     };
   },
 
+  // Async version that checks Firebase for real-time data
+  getAnyActiveShiftAsync: async (): Promise<{ shift: Shift; caregiverName: string } | null> => {
+    const shifts = await MockService.getShiftsAsync();
+    const activeShift = shifts.find((s) => !s.endTime && s.status === 'in-progress');
+    
+    if (!activeShift) return null;
+    
+    const users = await MockService.getUsersAsync();
+    const caregiver = users.find(u => u.id === activeShift.caregiverId);
+    
+    return {
+      shift: activeShift,
+      caregiverName: caregiver?.name || 'Unknown Caregiver'
+    };
+  },
+
   // Clock out a specific shift (for smart handoff)
   clockOutShift: (shiftId: string): void => {
     const shifts = MockService.getShifts();
