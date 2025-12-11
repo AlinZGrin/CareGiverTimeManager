@@ -72,9 +72,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteShift = (shiftId: string) => {
+  const handleDeleteShift = async (shiftId: string) => {
     if (confirm('Are you sure you want to delete this shift?')) {
-      MockService.deleteShift(shiftId);
+      await MockService.deleteShift(shiftId);
       refreshData();
     }
   };

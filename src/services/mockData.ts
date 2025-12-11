@@ -416,13 +416,13 @@ export const MockService = {
     }
   },
 
-  deleteShift: (shiftId: string) => {
+  deleteShift: async (shiftId: string) => {
     const shifts = MockService.getShifts().filter((s) => s.id !== shiftId);
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
     
-    // Delete from Firebase if available
+    // Delete from Firebase if available and wait for completion
     if (isFirebaseConfigured()) {
-      deleteShiftFromFirebase(shiftId);
+      await deleteShiftFromFirebase(shiftId);
     }
   },
 
