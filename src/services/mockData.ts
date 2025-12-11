@@ -400,7 +400,7 @@ export const MockService = {
     return MockService.getShifts();
   },
 
-  saveShift: (shift: Shift) => {
+  saveShift: async (shift: Shift) => {
     const shifts = MockService.getShifts();
     const index = shifts.findIndex((s) => s.id === shift.id);
     if (index >= 0) {
@@ -410,9 +410,9 @@ export const MockService = {
     }
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
     
-    // Save to Firebase if available
+    // Save to Firebase if available and wait for completion
     if (isFirebaseConfigured()) {
-      saveShiftToFirebase(shift);
+      await saveShiftToFirebase(shift);
     }
   },
 

@@ -64,10 +64,10 @@ export default function AdminDashboard() {
     setTotalOwed(owed);
   };
 
-  const handleMarkPaid = (shiftId: string) => {
+  const handleMarkPaid = async (shiftId: string) => {
     const shift = shifts.find(s => s.id === shiftId);
     if (shift) {
-      MockService.saveShift({ ...shift, isPaid: true });
+      await MockService.saveShift({ ...shift, isPaid: true });
       refreshData();
     }
   };
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
     setEditingManualShift(shift);
   };
 
-  const handleUpdateShift = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateShift = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingManualShift) return;
 
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
     const shiftStartTime = new Date(`${startDate}T${startTime}`).toISOString();
     const shiftEndTime = new Date(`${endDate}T${endTime}`).toISOString();
 
-    MockService.saveShift({
+    await MockService.saveShift({
       ...editingManualShift,
       caregiverId,
       startTime: shiftStartTime,
@@ -568,7 +568,7 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Manual Shift Entry</h3>
-              <form onSubmit={editingManualShift ? handleUpdateShift : (e) => {
+              <form onSubmit={editingManualShift ? handleUpdateShift : async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const caregiverId = formData.get('caregiverId') as string;
@@ -592,7 +592,7 @@ export default function AdminDashboard() {
                   isPaid: false,
                   status: 'completed',
                 };
-                MockService.saveShift(newShift);
+                await MockService.saveShift(newShift);
                 refreshData();
                 (e.target as HTMLFormElement).reset();
               }} className="space-y-4">

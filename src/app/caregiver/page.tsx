@@ -133,7 +133,7 @@ export default function CaregiverDashboard() {
     proceedWithClockIn();
   };
 
-  const proceedWithClockIn = () => {
+  const proceedWithClockIn = async () => {
     if (!user) return;
     const newShift: Shift = {
       id: Date.now().toString(),
@@ -143,7 +143,7 @@ export default function CaregiverDashboard() {
       isPaid: false,
       status: 'in-progress',
     };
-    MockService.saveShift(newShift);
+    await MockService.saveShift(newShift);
     setActiveShift(newShift);
     setLastShiftSummary(null);
   };
@@ -164,7 +164,7 @@ export default function CaregiverDashboard() {
     if (shiftToEnd && shiftToEnd.status === 'in-progress') {
       const endTime = new Date().toISOString();
       const updatedShift = { ...shiftToEnd, endTime, status: 'completed' as const };
-      MockService.saveShift(updatedShift);
+      await MockService.saveShift(updatedShift);
     }
     
     // Step 2: Small delay to ensure Firebase sync
@@ -179,7 +179,7 @@ export default function CaregiverDashboard() {
       isPaid: false,
       status: 'in-progress',
     };
-    MockService.saveShift(newShift);
+    await MockService.saveShift(newShift);
     setActiveShift(newShift);
     setLastShiftSummary(null);
     
@@ -195,11 +195,11 @@ export default function CaregiverDashboard() {
     setConcurrentShiftWarning(null);
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     if (!activeShift) return;
     const endTime = new Date().toISOString();
     const updatedShift = { ...activeShift, endTime, status: 'completed' as const };
-    MockService.saveShift(updatedShift);
+    await MockService.saveShift(updatedShift);
     
     // Calculate summary
     const start = new Date(activeShift.startTime).getTime();
