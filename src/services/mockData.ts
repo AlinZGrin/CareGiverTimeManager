@@ -493,10 +493,9 @@ export const MockService = {
     
     if (isFirebaseConfigured()) {
       const fbShifts = await getFirebaseScheduledShiftsAsync();
-      if (fbShifts.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(fbShifts));
-        return fbShifts;
-      }
+      // Always overwrite local cache with server state, even when empty
+      localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(fbShifts));
+      return fbShifts;
     }
     
     return MockService.getScheduledShifts();

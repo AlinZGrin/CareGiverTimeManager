@@ -426,14 +426,14 @@ export default function CaregiverDashboard() {
                             {shift.shiftName && (
                               <h3 className="font-bold text-lg text-blue-800">{shift.shiftName}</h3>
                             )}
-                            <p className="text-sm mt-1">
-                              <span className="font-medium">Date:</span> {formatShiftDate(shift.scheduledStartTime)}
+                            <p className="text-sm mt-1 text-gray-900 font-medium">
+                              <span className="font-bold">Date:</span> {formatShiftDate(shift.scheduledStartTime)}
                             </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Time:</span> {formatShiftTime(shift.scheduledStartTime)} - {formatShiftTime(shift.scheduledEndTime)}
+                            <p className="text-sm text-gray-900 font-medium">
+                              <span className="font-bold">Time:</span> {formatShiftTime(shift.scheduledStartTime)} - {formatShiftTime(shift.scheduledEndTime)}
                             </p>
                             {hoursUntil > 0 && (
-                              <p className="text-xs text-gray-600 mt-1">
+                              <p className="text-xs text-gray-700 mt-1">
                                 Starts in {Math.round(hoursUntil)} hours
                               </p>
                             )}
