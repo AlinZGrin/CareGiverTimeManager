@@ -1,0 +1,7 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#3b82f6" rx="32"/>
+  <circle cx="96" cy="70" r="25" fill="white"/>
+  <path d="M 96 100 Q 75 100 60 115 L 60 165 Q 60 175 70 175 L 122 175 Q 132 175 132 165 L 132 115 Q 117 100 96 100 Z" fill="white"/>
+  <text x="96" y="155" font-family="Arial, sans-serif" font-size="16" fill="#3b82f6" text-anchor="middle" font-weight="bold">TIME</text>
+</svg>

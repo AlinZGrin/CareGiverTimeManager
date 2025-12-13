@@ -66,7 +66,7 @@ export default function LoginPage() {
         const success = await loginAdmin(email, password);
         if (!success) setError('Invalid Email or Password');
       }
-    } catch (err) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);

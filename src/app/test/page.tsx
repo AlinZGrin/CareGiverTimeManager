@@ -1,13 +1,25 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MockService } from '../../services/mockData';
 import { isFirebaseConfigured, getFirebaseDatabase } from '../../services/firebase';
+import { User } from '../../types';
+
+type LocalStorageData = {
+  users: User[] | null;
+  initialized: string | null;
+  userCount: number;
+};
 
 export default function TestPage() {
   const [firebaseConfig, setFirebaseConfig] = useState<string>('');
-  const [users, setUsers] = useState<any[]>([]);
-  const [localStorageData, setLocalStorageData] = useState<any>({});
+  const [users, setUsers] = useState<User[]>([]);
+  const [localStorageData, setLocalStorageData] = useState<LocalStorageData>({
+    users: null,
+    initialized: null,
+    userCount: 0
+  });
   const [error, setError] = useState('');
 
   const loadData = async () => {
@@ -27,10 +39,11 @@ export default function TestPage() {
       // Show localStorage data
       const lsUsers = localStorage.getItem('cgtm_users');
       const lsInitialized = localStorage.getItem('cgtm_initialized');
+      const parsedUsers = lsUsers ? (JSON.parse(lsUsers) as User[]) : null;
       setLocalStorageData({
-        users: lsUsers ? JSON.parse(lsUsers) : null,
+        users: parsedUsers,
         initialized: lsInitialized,
-        userCount: lsUsers ? JSON.parse(lsUsers).length : 0
+        userCount: parsedUsers?.length ?? 0
       });
 
       // Try to fetch users
@@ -44,7 +57,10 @@ export default function TestPage() {
   };
 
   useEffect(() => {
-    loadData();
+    const run = async () => {
+      await loadData();
+    };
+    void run();
   }, []);
 
   const clearCache = () => {
@@ -113,9 +129,9 @@ export default function TestPage() {
         )}
 
         <div className="mt-8">
-          <a href="/" className="text-blue-600 hover:text-blue-800 underline">
+          <Link href="/" className="text-blue-600 hover:text-blue-800 underline">
             Back to Login
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -19,12 +19,19 @@ function ResetPasswordContent() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Validate token on page load
-    if (token) {
-      const isValid = MockService.validatePasswordResetToken(token);
-      setTokenValid(isValid);
-    }
-    setChecking(false);
+    let active = true;
+    const validate = () => {
+      if (!active) return;
+      if (token) {
+        const isValid = MockService.validatePasswordResetToken(token);
+        setTokenValid(isValid);
+      }
+      setChecking(false);
+    };
+    validate();
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {

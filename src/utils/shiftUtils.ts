@@ -1,4 +1,4 @@
-import { ScheduledShift } from '../types';
+import { ScheduledShift, Shift } from '../types';
 
 export const formatShiftTime = (isoString: string): string => {
   const date = new Date(isoString);
@@ -31,6 +31,16 @@ export const calculateShiftDuration = (startTime: string, endTime: string): numb
   const start = new Date(startTime).getTime();
   const end = new Date(endTime).getTime();
   return (end - start) / (1000 * 60 * 60); // hours
+};
+
+export const calculateShiftPay = (shift: Shift): number => {
+  if (!shift.endTime) return 0;
+  const duration = calculateShiftDuration(shift.startTime, shift.endTime);
+  const payType = shift.payType || 'hourly';
+  if (payType === 'perShift') {
+    return shift.shiftRate ?? 0;
+  }
+  return duration * (shift.hourlyRate ?? 0);
 };
 
 export const formatDuration = (hours: number): string => {

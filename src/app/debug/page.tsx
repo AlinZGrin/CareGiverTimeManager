@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { isFirebaseConfigured } from '../../services/firebase';
 
@@ -40,7 +41,7 @@ export default function DebugPage() {
           {debugInfo}
         </pre>
         <div className="mt-6">
-          <a href="/" className="text-blue-600 hover:underline">← Back to Login</a>
+          <Link href="/" className="text-blue-600 hover:underline">← Back to Login</Link>
         </div>
       </div>
     </div>

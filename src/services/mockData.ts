@@ -1,6 +1,6 @@
-import { User, Shift, ScheduledShift } from '../types';
+import { User, Shift, ScheduledShift, PayType } from '../types';
 import { getFirebaseDatabase, isFirebaseConfigured, sendPasswordResetEmailToAdmin } from './firebase';
-import { ref, get, set, update, remove, onValue, off } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 
 const STORAGE_KEYS = {
   USERS: 'cgtm_users',
@@ -33,7 +33,9 @@ const INITIAL_USERS: User[] = [
     role: 'caregiver',
     phone: '5551234',
     pin: '1234',
+    payType: 'hourly',
     hourlyRate: 25.0,
+    shiftRate: 0,
     isActive: true,
   },
   {
@@ -42,10 +44,32 @@ const INITIAL_USERS: User[] = [
     role: 'caregiver',
     phone: '5555678',
     pin: '5678',
+    payType: 'perShift',
     hourlyRate: 28.0,
+    shiftRate: 200,
     isActive: true,
   },
 ];
+
+const ensureCaregiverPayDefaults = (user: User): User => {
+  if (user.role !== 'caregiver') return user;
+  const payType: PayType = user.payType || 'hourly';
+  const hourlyRate = user.hourlyRate ?? 0;
+  const shiftRate = user.shiftRate ?? 0;
+  return { ...user, payType, hourlyRate, shiftRate };
+};
+
+const ensureShiftPayDefaults = (shift: Shift): Shift => {
+  const payType: PayType = shift.payType || 'hourly';
+  const shiftRate = shift.shiftRate ?? 0;
+  return { ...shift, payType, shiftRate };
+};
+
+const ensureScheduledShiftPayDefaults = (shift: ScheduledShift): ScheduledShift => {
+  const payType: PayType = shift.payType || 'hourly';
+  const shiftRate = shift.shiftRate ?? 0;
+  return { ...shift, payType, shiftRate };
+};
 
 // Helper functions for Firebase operations
 const getFirebaseUsersAsync = async (): Promise<User[]> => {
@@ -63,7 +87,7 @@ const getFirebaseUsersAsync = async (): Promise<User[]> => {
       return users;
     }
     return [];
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -75,7 +99,7 @@ const saveUserToFirebase = async (user: User) => {
   try {
     const userRef = ref(db, `users/${user.id}`);
     await set(userRef, user);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -87,7 +111,7 @@ const deleteUserFromFirebase = async (userId: string) => {
   try {
     const userRef = ref(db, `users/${userId}`);
     await remove(userRef);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -99,7 +123,7 @@ const saveShiftToFirebase = async (shift: Shift) => {
   try {
     const shiftRef = ref(db, `shifts/${shift.id}`);
     await set(shiftRef, shift);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -111,7 +135,7 @@ const deleteShiftFromFirebase = async (shiftId: string) => {
   try {
     const shiftRef = ref(db, `shifts/${shiftId}`);
     await remove(shiftRef);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -131,7 +155,7 @@ const getFirebaseShiftsAsync = async (): Promise<Shift[]> => {
       return shifts;
     }
     return [];
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -143,7 +167,7 @@ const saveScheduledShiftToFirebase = async (shift: ScheduledShift) => {
   try {
     const shiftRef = ref(db, `scheduled_shifts/${shift.id}`);
     await set(shiftRef, shift);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -155,7 +179,7 @@ const deleteScheduledShiftFromFirebase = async (shiftId: string) => {
   try {
     const shiftRef = ref(db, `scheduled_shifts/${shiftId}`);
     await remove(shiftRef);
-  } catch (error) {
+  } catch {
     // Silent failure
   }
 };
@@ -175,7 +199,7 @@ const getFirebaseScheduledShiftsAsync = async (): Promise<ScheduledShift[]> => {
       return shifts;
     }
     return [];
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -228,7 +252,7 @@ const clearResetToken = (token: string) => {
 
 export const MockService = {
   getUsers: (): User[] => {
-    if (typeof window === 'undefined') return INITIAL_USERS;
+    if (typeof window === 'undefined') return INITIAL_USERS.map(ensureCaregiverPayDefaults);
     
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.USERS);
@@ -240,22 +264,23 @@ export const MockService = {
           // Ensure admin user is always present
           const hasAdmin = parsed.some(u => u.role === 'admin');
           if (!hasAdmin) {
-            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-            return INITIAL_USERS;
+            const normalizedDefaults = INITIAL_USERS.map(ensureCaregiverPayDefaults);
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(normalizedDefaults));
+            return normalizedDefaults;
           }
-          return parsed;
+          return parsed.map(ensureCaregiverPayDefaults);
         }
       }
       
       // If no valid data exists, initialize with defaults
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-      return INITIAL_USERS;
-    } catch (error) {
+      return INITIAL_USERS.map(ensureCaregiverPayDefaults);
+    } catch {
       // On any error, restore defaults
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-      return INITIAL_USERS;
+      return INITIAL_USERS.map(ensureCaregiverPayDefaults);
     }
   },
 
@@ -285,8 +310,9 @@ export const MockService = {
           }
         }
         
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(finalUsers));
-        return finalUsers;
+        const normalized = finalUsers.map(ensureCaregiverPayDefaults);
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(normalized));
+        return normalized;
       }
       
       // If Firebase is empty, initialize it with default users (first time setup)
@@ -297,9 +323,10 @@ export const MockService = {
         for (const user of INITIAL_USERS) {
           await saveUserToFirebase(user);
         }
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        const normalized = INITIAL_USERS.map(ensureCaregiverPayDefaults);
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(normalized));
         localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
-        return INITIAL_USERS;
+        return normalized;
       }
       
       // Firebase is empty and already initialized - return cached or defaults
@@ -307,37 +334,40 @@ export const MockService = {
       if (cached) {
         const parsedCache = JSON.parse(cached);
         if (Array.isArray(parsedCache) && parsedCache.length > 0) {
-          return parsedCache;
+          return parsedCache.map(ensureCaregiverPayDefaults);
         }
       }
       
       // If cache is also empty/invalid, restore defaults
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-      return INITIAL_USERS;
+      const normalized = INITIAL_USERS.map(ensureCaregiverPayDefaults);
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(normalized));
+      return normalized;
     }
     return MockService.getUsers();
   },
 
   saveUser: (user: User) => {
     try {
+      const normalizedUser = ensureCaregiverPayDefaults(user);
       // Update Firebase if available
       if (isFirebaseConfigured()) {
-        saveUserToFirebase(user);
+        saveUserToFirebase(normalizedUser);
       }
       
       // Always update localStorage as fallback
       const users = MockService.getUsers();
-      const index = users.findIndex((u) => u.id === user.id);
+      const index = users.findIndex((u) => u.id === normalizedUser.id);
       if (index >= 0) {
-        users[index] = user;
+        users[index] = normalizedUser;
       } else {
-        users.push(user);
+        users.push(normalizedUser);
       }
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-    } catch (error) {
+    } catch {
       // Don't fail silently - ensure at least the user is sent to Firebase
       if (isFirebaseConfigured()) {
-        saveUserToFirebase(user);
+        const normalizedUser = ensureCaregiverPayDefaults(user);
+        saveUserToFirebase(normalizedUser);
       }
     }
   },
@@ -347,18 +377,24 @@ export const MockService = {
       const users = MockService.getUsers();
       const index = users.findIndex((u) => u.id === userId);
       if (index >= 0) {
-        users[index] = { ...users[index], ...updates };
+        users[index] = ensureCaregiverPayDefaults({ ...users[index], ...updates });
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
         
         // Update Firebase if available
         if (isFirebaseConfigured()) {
           saveUserToFirebase(users[index]);
+          try {
+            const db = getFirebaseDatabase();
+            if (db) {
+              set(ref(db, `users/${userId}`), users[index]);
+            }
+          } catch {}
         }
         
         return users[index];
       }
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -372,7 +408,7 @@ export const MockService = {
       if (isFirebaseConfigured()) {
         deleteUserFromFirebase(userId);
       }
-    } catch (error) {
+    } catch {
       // Still try to delete from Firebase if localStorage fails
       if (isFirebaseConfigured()) {
         deleteUserFromFirebase(userId);
@@ -383,7 +419,8 @@ export const MockService = {
   getShifts: (): Shift[] => {
     if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem(STORAGE_KEYS.SHIFTS);
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed.map(ensureShiftPayDefaults) : [];
   },
 
   getShiftsAsync: async (): Promise<Shift[]> => {
@@ -392,8 +429,9 @@ export const MockService = {
     if (isFirebaseConfigured()) {
       const fbShifts = await getFirebaseShiftsAsync();
       if (fbShifts.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(fbShifts));
-        return fbShifts;
+        const normalized = fbShifts.map(ensureShiftPayDefaults);
+        localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(normalized));
+        return normalized;
       }
     }
     
@@ -401,18 +439,19 @@ export const MockService = {
   },
 
   saveShift: async (shift: Shift) => {
+    const normalizedShift = ensureShiftPayDefaults(shift);
     const shifts = MockService.getShifts();
-    const index = shifts.findIndex((s) => s.id === shift.id);
+    const index = shifts.findIndex((s) => s.id === normalizedShift.id);
     if (index >= 0) {
-      shifts[index] = shift;
+      shifts[index] = normalizedShift;
     } else {
-      shifts.push(shift);
+      shifts.push(normalizedShift);
     }
     localStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
     
     // Save to Firebase if available and wait for completion
     if (isFirebaseConfigured()) {
-      await saveShiftToFirebase(shift);
+      await saveShiftToFirebase(normalizedShift);
     }
   },
 
@@ -485,7 +524,8 @@ export const MockService = {
   getScheduledShifts: (): ScheduledShift[] => {
     if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem(STORAGE_KEYS.SCHEDULED_SHIFTS);
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed.map(ensureScheduledShiftPayDefaults) : [];
   },
 
   getScheduledShiftsAsync: async (): Promise<ScheduledShift[]> => {
@@ -494,26 +534,28 @@ export const MockService = {
     if (isFirebaseConfigured()) {
       const fbShifts = await getFirebaseScheduledShiftsAsync();
       // Always overwrite local cache with server state, even when empty
-      localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(fbShifts));
-      return fbShifts;
+      const normalized = fbShifts.map(ensureScheduledShiftPayDefaults);
+      localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(normalized));
+      return normalized;
     }
     
     return MockService.getScheduledShifts();
   },
 
   saveScheduledShift: (shift: ScheduledShift) => {
+    const normalizedShift = ensureScheduledShiftPayDefaults(shift);
     const shifts = MockService.getScheduledShifts();
-    const index = shifts.findIndex((s) => s.id === shift.id);
+    const index = shifts.findIndex((s) => s.id === normalizedShift.id);
     if (index >= 0) {
-      shifts[index] = shift;
+      shifts[index] = normalizedShift;
     } else {
-      shifts.push(shift);
+      shifts.push(normalizedShift);
     }
     localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
     
     // Save to Firebase if available
     if (isFirebaseConfigured()) {
-      saveScheduledShiftToFirebase(shift);
+      saveScheduledShiftToFirebase(normalizedShift);
     }
   },
 
@@ -521,7 +563,7 @@ export const MockService = {
     const shifts = MockService.getScheduledShifts();
     const index = shifts.findIndex((s) => s.id === shiftId);
     if (index >= 0) {
-      shifts[index] = { ...shifts[index], ...updates };
+      shifts[index] = ensureScheduledShiftPayDefaults({ ...shifts[index], ...updates });
       localStorage.setItem(STORAGE_KEYS.SCHEDULED_SHIFTS, JSON.stringify(shifts));
       
       // Save to Firebase if available
@@ -580,6 +622,13 @@ export const MockService = {
     }
     
     // Assign shift
+    const users = MockService.getUsers();
+    const caregiver = users.find(u => u.id === caregiverId && u.role === 'caregiver');
+    if (caregiver) {
+      shift.payType = caregiver.payType || 'hourly';
+      shift.hourlyRate = caregiver.hourlyRate ?? 0;
+      shift.shiftRate = caregiver.shiftRate ?? 0;
+    }
     shift.caregiverId = caregiverId;
     shift.status = 'assigned';
     MockService.saveScheduledShift(shift);
@@ -655,6 +704,16 @@ export const MockService = {
       return { success: true, message: 'If an admin account exists with that email, a reset link has been sent.' };
     }
     
+    // If Firebase is not configured, fall back to local token generation
+    if (!isFirebaseConfigured()) {
+      const resetToken = generateResetToken(email, user.id);
+      return {
+        success: true,
+        message: 'Password reset token generated locally (Firebase not configured).',
+        resetToken,
+      };
+    }
+
     // Try Firebase email first - this is the preferred method
     try {
       const firebaseResult = await sendPasswordResetEmailToAdmin(email);
@@ -666,16 +725,20 @@ export const MockService = {
         };
       }
       
-      // If Firebase fails, show the actual error
+      // If Firebase fails, generate a local token as a fallback
+      const resetToken = generateResetToken(email, user.id);
       return { 
-        success: false, 
-        message: `Unable to send email: ${firebaseResult.message}. Please try again or contact support.`
+        success: true, 
+        message: 'Firebase email failed; generated local reset token instead.',
+        resetToken,
       };
-    } catch (error: any) {
-      // Unexpected error
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const resetToken = generateResetToken(email, user.id);
       return { 
-        success: false, 
-        message: `Error sending reset email: ${error.message || 'Unknown error'}. Please try again.`
+        success: true, 
+        message: `Error sending reset email (${message}); generated local reset token instead.`,
+        resetToken,
       };
     }
   },
@@ -748,7 +811,7 @@ export const MockService = {
         try {
           const userRef = ref(db, `users/${resetInfo.userId}`);
           await set(userRef, users[userIndex]);
-        } catch (error) {
+        } catch {
           // Firebase save failed, but local password is updated
         }
       }

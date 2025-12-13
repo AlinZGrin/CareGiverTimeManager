@@ -1,6 +1,7 @@
 import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
-import { getDatabase, Database } from 'firebase/database';
+import { getDatabase, Database, ref, set } from 'firebase/database';
 import { getAuth, Auth, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getMessaging, getToken, isSupported, onMessage, MessagePayload, Messaging } from 'firebase/messaging';
 
 // TODO: Replace with your Firebase config from https://console.firebase.google.com
 const firebaseConfig = {
@@ -23,7 +24,7 @@ if (typeof window !== 'undefined') {
   setTimeout(() => {
     try {
       getFirebaseAuth();
-    } catch (e) {
+    } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
       // Silent - will retry on actual use
     }
   }, 500);
@@ -45,7 +46,7 @@ const getFirebaseApp = (): FirebaseApp | null => {
     }
     
     return initializeApp(firebaseConfig);
-  } catch (error) {
+  } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
     return null;
   }
 };
@@ -62,8 +63,8 @@ export const getFirebaseDatabase = (): Database | null => {
       }
       
       database = getDatabase(app);
-    } catch (error) {
-      initError = String(error);
+    } catch (_error) {
+      initError = String(_error);
       return null;
     }
   }
@@ -81,7 +82,7 @@ export const getFirebaseAuth = (): Auth | null => {
       }
       
       auth = getAuth(app);
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       return null;
     }
   }
@@ -107,16 +108,17 @@ export const sendPasswordResetEmailToAdmin = async (email: string): Promise<{ su
       success: true, 
       message: 'Password reset email has been sent. Please check your inbox and spam folder.' 
     };
-  } catch (error: any) {
-    // Handle specific Firebase errors
-    if (error.code === 'auth/user-not-found') {
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? String((error as { code?: string }).code) : '';
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    if (code === 'auth/user-not-found') {
       return { success: false, message: 'No account found with that email address.' };
-    } else if (error.code === 'auth/invalid-email') {
+    } else if (code === 'auth/invalid-email') {
       return { success: false, message: 'Invalid email address format.' };
-    } else if (error.code === 'auth/too-many-requests') {
+    } else if (code === 'auth/too-many-requests') {
       return { success: false, message: 'Too many password reset attempts. Please wait a few minutes and try again.' };
     }
-    return { success: false, message: `${error.code || 'Error'}: ${error.message || 'Unknown error occurred'}` };
+    return { success: false, message: `${code || 'Error'}: ${message}` };
   }
 };
 
@@ -128,6 +130,37 @@ export const isFirebaseConfigured = (): boolean => {
   return configured;
 };
 
+// Firebase Cloud Messaging helpers
+export async function getFirebaseMessaging(): Promise<Messaging | null> {
+  const supported = await isSupported().catch(() => false);
+  if (!supported) return null;
+  try {
+    return getMessaging();
+  } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    return null;
+  }
+}
+
+export async function registerNotificationToken(userId: string): Promise<string | null> {
+  const messaging = await getFirebaseMessaging();
+  if (!messaging) return null;
+  // Service worker must be available at /firebase-messaging-sw.js
+  const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+  const token = await getToken(messaging, { serviceWorkerRegistration: swReg, vapidKey }).catch(() => null);
+  if (!token) return null;
+  const db = getFirebaseDatabase();
+  if (!db) return token; // Guard for server-side
+  await set(ref(db, `notificationTokens/${userId}`), { token, updatedAt: Date.now() });
+  return token;
+}
+
+export function onForegroundMessage(callback: (payload: MessagePayload) => void) {
+  getFirebaseMessaging().then((messaging) => {
+    if (!messaging) return;
+    onMessage(messaging, (payload) => callback(payload));
+  });
+}
 // Login with Firebase Auth
 export const loginWithFirebaseAuth = async (email: string, password: string): Promise<{ success: boolean; message: string; userId?: string }> => {
   try {
@@ -142,12 +175,13 @@ export const loginWithFirebaseAuth = async (email: string, password: string): Pr
       message: 'Login successful',
       userId: userCredential.user.uid
     };
-  } catch (error: any) {
-    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? String((error as { code?: string }).code) : '';
+    if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
       return { success: false, message: 'Invalid email or password.' };
-    } else if (error.code === 'auth/invalid-email') {
+    } else if (code === 'auth/invalid-email') {
       return { success: false, message: 'Invalid email address.' };
-    } else if (error.code === 'auth/too-many-requests') {
+    } else if (code === 'auth/too-many-requests') {
       return { success: false, message: 'Too many failed attempts. Please try again later.' };
     }
     return { success: false, message: 'Login failed. Please try again.' };

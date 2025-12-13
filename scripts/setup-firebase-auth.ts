@@ -55,13 +55,14 @@ async function setupFirebaseAuth() {
     console.log('   2. Check your email inbox (and spam folder)');
     console.log('   3. Update the admin email in mockData.ts if different\n');
 
-  } catch (error: any) {
-    if (error.code === 'auth/email-already-in-use') {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (err.code === 'auth/email-already-in-use') {
       console.log('\n✅ User already exists in Firebase Authentication');
       console.log('   Password reset emails are ready to be sent!');
     } else {
       console.error('\n❌ Error creating Firebase Auth user:');
-      console.error(`   ${error.code}: ${error.message}`);
+      console.error(`   ${err.code || 'unknown'}: ${err.message || 'Unknown error'}`);
       console.log('\n💡 Troubleshooting:');
       console.log('   - Check your .env.local file has correct Firebase credentials');
       console.log('   - Verify Email/Password is enabled in Firebase Console → Authentication → Sign-in method');

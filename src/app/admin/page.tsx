@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { ref, get } from 'firebase/database';
+import { getFirebaseDatabase } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { MockService } from '../../services/mockData';
-import { User, Shift, ScheduledShift } from '../../types';
+import { User, Shift, ScheduledShift, PayType } from '../../types';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
   formatShiftTime, 
   formatShiftDate, 
-  formatShiftDateShort,
   getShiftStatusColor, 
   getShiftStatusLabel,
-  sortShiftsByDate 
+  sortShiftsByDate,
+  calculateShiftPay
 } from '../../utils/shiftUtils';
 
 export default function AdminDashboard() {
@@ -33,19 +35,7 @@ export default function AdminDashboard() {
   const [editingManualShift, setEditingManualShift] = useState<Shift | null>(null);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
-    }
-    refreshData();
-    
-    // Set up interval to sync with Firebase every 2 seconds
-    const interval = setInterval(refreshData, 2000);
-    return () => clearInterval(interval);
-  }, [user, router]);
-
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     const allUsers = await MockService.getUsersAsync();
     setCaregivers(allUsers.filter(u => u.role === 'caregiver'));
     
@@ -57,12 +47,24 @@ export default function AdminDashboard() {
     
     const owed = allShifts
       .filter(s => !s.isPaid && s.endTime)
-      .reduce((acc, s) => {
-        const duration = (new Date(s.endTime!).getTime() - new Date(s.startTime).getTime()) / (1000 * 60 * 60);
-        return acc + (duration * s.hourlyRate);
-      }, 0);
+      .reduce((acc, s) => acc + calculateShiftPay(s), 0);
     setTotalOwed(owed);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      router.push('/');
+      return;
+    }
+    const run = async () => {
+      await refreshData();
+    };
+    void run();
+    
+    // Set up interval to sync with Firebase every 2 seconds
+    const interval = setInterval(refreshData, 2000);
+    return () => clearInterval(interval);
+  }, [user, router, refreshData]);
 
   const handleMarkPaid = async (shiftId: string) => {
     const shift = shifts.find(s => s.id === shiftId);
@@ -86,13 +88,14 @@ export default function AdminDashboard() {
   const handleUpdateShift = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingManualShift) return;
-
     const formData = new FormData(e.currentTarget);
     const caregiverId = formData.get('caregiverId') as string;
     const startDate = formData.get('startDate') as string;
     const startTime = formData.get('startTime') as string;
     const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
+
+    const caregiver = caregivers.find(c => c.id === caregiverId);
 
     const shiftStartTime = new Date(`${startDate}T${startTime}`).toISOString();
     const shiftEndTime = new Date(`${endDate}T${endTime}`).toISOString();
@@ -102,6 +105,9 @@ export default function AdminDashboard() {
       caregiverId,
       startTime: shiftStartTime,
       endTime: shiftEndTime,
+      payType: caregiver?.payType || editingManualShift.payType || 'hourly',
+      hourlyRate: caregiver?.hourlyRate ?? editingManualShift.hourlyRate,
+      shiftRate: caregiver?.shiftRate ?? editingManualShift.shiftRate,
     });
     setEditingManualShift(null);
     refreshData();
@@ -110,13 +116,18 @@ export default function AdminDashboard() {
   const handleAddCaregiver = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const payType = (formData.get('payType') as PayType) || 'hourly';
+    const hourlyRate = parseFloat((formData.get('hourlyRate') as string) || '0');
+    const shiftRate = parseFloat((formData.get('shiftRate') as string) || '0');
     const newUser: User = {
       id: Date.now().toString(),
       name: formData.get('name') as string,
       role: 'caregiver',
       phone: formData.get('phone') as string,
       pin: formData.get('pin') as string,
-      hourlyRate: parseFloat(formData.get('rate') as string),
+      payType,
+      hourlyRate: payType === 'hourly' ? hourlyRate : hourlyRate || 0,
+      shiftRate: payType === 'perShift' ? shiftRate : shiftRate || 0,
       isActive: true,
     };
     MockService.saveUser(newUser);
@@ -183,8 +194,8 @@ export default function AdminDashboard() {
     refreshData();
   };
 
-  const handleUpdateCaregiverRate = (caregiverId: string, newRate: number) => {
-    MockService.updateUser(caregiverId, { hourlyRate: newRate });
+  const handleUpdateCaregiverPay = (caregiverId: string, payType: PayType, hourlyRate: number, shiftRate: number) => {
+    MockService.updateUser(caregiverId, { payType, hourlyRate, shiftRate });
     setEditingCaregiver(null);
     refreshData();
   };
@@ -289,10 +300,7 @@ export default function AdminDashboard() {
                   const caregiverUnpaidShifts = shifts.filter(
                     s => s.caregiverId === caregiver.id && !s.isPaid && s.endTime
                   );
-                  const caregiverOwed = caregiverUnpaidShifts.reduce((acc, s) => {
-                    const duration = (new Date(s.endTime!).getTime() - new Date(s.startTime).getTime()) / (1000 * 60 * 60);
-                    return acc + (duration * s.hourlyRate);
-                  }, 0);
+                  const caregiverOwed = caregiverUnpaidShifts.reduce((acc, s) => acc + calculateShiftPay(s), 0);
 
                   return (
                     <div key={caregiver.id} className="flex justify-between items-center border-b pb-3">
@@ -460,6 +468,45 @@ export default function AdminDashboard() {
                             >
                               Delete
                             </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  console.log('Sending reminder for shift:', {
+                                    caregiverId: shift.caregiverId,
+                                    shiftName: shift.shiftName,
+                                    scheduledStartTime: shift.scheduledStartTime,
+                                  });
+                                  
+                                  const response = await fetch('/api/send-shift-reminders', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      caregiverId: shift.caregiverId,
+                                      shiftName: shift.shiftName,
+                                      scheduledStartTime: shift.scheduledStartTime,
+                                    }),
+                                  });
+                                  
+                                  const result = await response.json();
+                                  console.log('Reminder API response:', response.status, result);
+                                  
+                                  if (response.ok && result.success) {
+                                    window.alert('Reminder sent successfully! ✅');
+                                  } else {
+                                    window.alert(`Error sending reminder:\nStatus: ${response.status}\nDetails: ${JSON.stringify(result, null, 2)}`);
+                                  }
+                                } catch (e: unknown) {
+                                  const message = e instanceof Error ? e.message : 'Unknown error';
+                                  console.error('Failed to send reminder:', e);
+                                  window.alert(`Failed to send reminder:\n${message}`);
+                                }
+                              }}
+                              className={`text-sm font-medium px-2 py-1 rounded ${shift.caregiverId ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'}`}
+                              disabled={!shift.caregiverId}
+                              title={!shift.caregiverId ? 'Assign caregiver to enable reminders' : 'Send reminder'}
+                            >
+                              Send Reminder
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -475,12 +522,17 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Add New Caregiver</h3>
-              <form onSubmit={handleAddCaregiver} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <form onSubmit={handleAddCaregiver} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <input name="name" placeholder="Name" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 <input name="phone" placeholder="Phone" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 <input name="pin" placeholder="PIN (4 digits)" maxLength={4} required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                <input name="rate" type="number" step="0.01" placeholder="Hourly Rate ($)" required className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                <button type="submit" className="bg-blue-600 text-white p-2 rounded md:col-span-4">Add Caregiver</button>
+                <select name="payType" defaultValue="hourly" className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                  <option value="hourly">Hourly</option>
+                  <option value="perShift">Per Shift</option>
+                </select>
+                <input name="hourlyRate" type="number" step="0.01" placeholder="Hourly Rate ($)" className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <input name="shiftRate" type="number" step="0.01" placeholder="Per-Shift Rate ($)" className="border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-2" />
+                <button type="submit" className="bg-blue-600 text-white p-2 rounded md:col-span-5">Add Caregiver</button>
               </form>
             </div>
 
@@ -491,7 +543,8 @@ export default function AdminDashboard() {
                   <tr className="text-left text-gray-900 font-semibold border-b">
                     <th className="pb-2 text-xs md:text-sm">Name</th>
                     <th className="pb-2 text-xs md:text-sm">Phone</th>
-                    <th className="pb-2 text-xs md:text-sm">Rate</th>
+                    <th className="pb-2 text-xs md:text-sm">Notifications</th>
+                    <th className="pb-2 text-xs md:text-sm">Pay</th>
                     <th className="pb-2 text-xs md:text-sm">Status</th>
                     <th className="pb-2 text-xs md:text-sm">Actions</th>
                   </tr>
@@ -501,21 +554,48 @@ export default function AdminDashboard() {
                     <tr key={c.id} className="border-b last:border-0">
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{c.name}</td>
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{c.phone}</td>
+                      <td className="py-3 text-xs md:text-sm">
+                        {/* Token status indicator */}
+                        <TokenStatus caregiverId={c.id} />
+                      </td>
                       <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
                         {editingCaregiver?.id === c.id ? (
-                          <div className="flex items-center gap-2">
-                            <span>$</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select
+                              id={`paytype-${c.id}`}
+                              defaultValue={c.payType || 'hourly'}
+                              className="border p-1 rounded"
+                            >
+                              <option value="hourly">Hourly</option>
+                              <option value="perShift">Per Shift</option>
+                            </select>
                             <input
                               type="number"
                               step="0.01"
                               defaultValue={c.hourlyRate}
-                              className="border p-1 rounded w-20"
+                              className="border p-1 rounded w-24"
                               id={`rate-${c.id}`}
+                              placeholder="Hourly"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              defaultValue={c.shiftRate}
+                              className="border p-1 rounded w-24"
+                              id={`shift-${c.id}`}
+                              placeholder="Per shift"
                             />
                             <button
                               onClick={() => {
-                                const input = document.getElementById(`rate-${c.id}`) as HTMLInputElement;
-                                handleUpdateCaregiverRate(c.id, parseFloat(input.value));
+                                const payType = (document.getElementById(`paytype-${c.id}`) as HTMLSelectElement).value as PayType;
+                                const hourlyInput = document.getElementById(`rate-${c.id}`) as HTMLInputElement;
+                                const shiftInput = document.getElementById(`shift-${c.id}`) as HTMLInputElement;
+                                handleUpdateCaregiverPay(
+                                  c.id,
+                                  payType,
+                                  parseFloat(hourlyInput.value || '0'),
+                                  parseFloat(shiftInput.value || '0')
+                                );
                               }}
                               className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
                             >
@@ -529,8 +609,13 @@ export default function AdminDashboard() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <span>${c.hourlyRate?.toFixed(2)}/hr</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <span className="font-semibold text-gray-900">
+                              {c.payType === 'perShift' 
+                                ? `$${(c.shiftRate ?? 0).toFixed(2)}/shift`
+                                : `$${(c.hourlyRate ?? 0).toFixed(2)}/hr`}
+                            </span>
+                            <span className="text-[11px] text-gray-600">{c.payType === 'perShift' ? 'Per Shift' : 'Hourly'}</span>
                             <button
                               onClick={() => setEditingCaregiver(c)}
                               className="text-blue-600 hover:text-blue-800 text-xs"
@@ -588,7 +673,9 @@ export default function AdminDashboard() {
                   caregiverId,
                   startTime: shiftStartTime,
                   endTime: shiftEndTime,
+                  payType: caregiver.payType || 'hourly',
                   hourlyRate: caregiver.hourlyRate || 0,
+                  shiftRate: caregiver.shiftRate || 0,
                   isPaid: false,
                   status: 'completed',
                 };
@@ -671,7 +758,7 @@ export default function AdminDashboard() {
                   const start = new Date(s.startTime);
                   const end = s.endTime ? new Date(s.endTime) : null;
                   const duration = end ? (end.getTime() - start.getTime()) / (1000 * 60 * 60) : 0;
-                  const cost = duration * s.hourlyRate;
+                  const cost = end ? calculateShiftPay(s) : 0;
 
                   return (
                     <tr key={s.id} className="border-b last:border-0">
@@ -913,5 +1000,29 @@ export default function AdminDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+function TokenStatus({ caregiverId }: { caregiverId: string }) {
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = getFirebaseDatabase();
+        if (!db) {
+          setHasToken(null);
+          return;
+        }
+        const snap = await get(ref(db, `notificationTokens/${caregiverId}`));
+        setHasToken(snap.exists());
+      } catch {
+        setHasToken(null);
+      }
+    })();
+  }, [caregiverId]);
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs ${hasToken ? 'text-green-700' : 'text-gray-500'}`}>
+      {hasToken ? 'Token Active' : 'No Token'}
+    </span>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { registerNotificationToken, onForegroundMessage } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { MockService } from '../../services/mockData';
 import { Shift, ScheduledShift } from '../../types';
@@ -11,7 +12,8 @@ import {
   formatShiftDate,
   sortShiftsByDate,
   canDropShift,
-  getHoursUntilShift 
+  getHoursUntilShift,
+  calculateShiftPay
 } from '../../utils/shiftUtils';
 
 export default function CaregiverDashboard() {
@@ -26,6 +28,7 @@ export default function CaregiverDashboard() {
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
   const [concurrentShiftWarning, setConcurrentShiftWarning] = useState<{ caregiverName: string; shiftId: string } | null>(null);
   const [totalOwed, setTotalOwed] = useState<number>(0);
 
@@ -39,12 +42,7 @@ export default function CaregiverDashboard() {
       s.endTime
     );
     
-    const total = unpaidShifts.reduce((sum, shift) => {
-      const start = new Date(shift.startTime).getTime();
-      const end = new Date(shift.endTime!).getTime();
-      const hours = (end - start) / (1000 * 60 * 60);
-      return sum + (hours * shift.hourlyRate);
-    }, 0);
+    const total = unpaidShifts.reduce((sum, shift) => sum + calculateShiftPay(shift), 0);
     
     setTotalOwed(total);
   };
@@ -91,6 +89,60 @@ export default function CaregiverDashboard() {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
+
+  // Register for FCM notifications when caregiver is known
+  useEffect(() => {
+    if (!user || user.role !== 'caregiver' || !notificationsEnabled) return;
+    (async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        await registerNotificationToken(user.id);
+        onForegroundMessage((payload) => {
+          console.log('FCM foreground message:', payload);
+        });
+      } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        // ignore
+      }
+    })();
+  }, [user, notificationsEnabled]);
+
+  // Monitor scheduled shifts and send reminder when start time arrives
+  useEffect(() => {
+    if (!user || user.role !== 'caregiver' || !notificationsEnabled || !myShifts.length) return;
+    
+    const sentReminders = new Set<string>();
+    const interval = setInterval(async () => {
+      const now = Date.now();
+      
+      for (const shift of myShifts) {
+        const shiftStartTime = new Date(shift.scheduledStartTime).getTime();
+        const timeUntilStart = shiftStartTime - now;
+        
+        // If shift start time has arrived and caregiver hasn't clocked in yet
+        if (timeUntilStart <= 0 && timeUntilStart > -60000 && !sentReminders.has(shift.id) && !activeShift) {
+          sentReminders.add(shift.id);
+          
+          // Send notification
+          if (Notification.permission === 'granted') {
+            try {
+              const registration = await navigator.serviceWorker.ready;
+              await registration.showNotification('Shift Reminder', {
+                body: `Your shift "${shift.shiftName}" is starting now. Please clock in.`,
+                icon: '/icons/icon-192.png',
+                tag: `shift-reminder-${shift.id}`,
+                requireInteraction: true,
+              });
+            } catch (e) {
+              console.error('Failed to show shift reminder notification:', e);
+            }
+          }
+        }
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(interval);
+  }, [user, myShifts, notificationsEnabled, activeShift]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -139,7 +191,9 @@ export default function CaregiverDashboard() {
       id: Date.now().toString(),
       caregiverId: user.id,
       startTime: new Date().toISOString(),
+      payType: user.payType || 'hourly',
       hourlyRate: user.hourlyRate || 0,
+      shiftRate: user.shiftRate || 0,
       isPaid: false,
       status: 'in-progress',
     };
@@ -175,7 +229,9 @@ export default function CaregiverDashboard() {
       id: Date.now().toString(),
       caregiverId: user.id,
       startTime: new Date().toISOString(),
+      payType: user.payType || 'hourly',
       hourlyRate: user.hourlyRate || 0,
+      shiftRate: user.shiftRate || 0,
       isPaid: false,
       status: 'in-progress',
     };
@@ -205,7 +261,10 @@ export default function CaregiverDashboard() {
     const start = new Date(activeShift.startTime).getTime();
     const end = new Date(endTime).getTime();
     const diffHours = (end - start) / (1000 * 60 * 60);
-    const pay = diffHours * (activeShift.hourlyRate || 0);
+    const payType = activeShift.payType || 'hourly';
+    const pay = payType === 'perShift'
+      ? (activeShift.shiftRate || 0)
+      : diffHours * (activeShift.hourlyRate || 0);
     
     const hours = Math.floor(diffHours);
     const minutes = Math.floor((diffHours - hours) * 60);
@@ -511,7 +570,12 @@ export default function CaregiverDashboard() {
                   <div className="border-b pb-4">
                     <h3 className="font-medium text-gray-700 mb-2">Personal Information</h3>
                     <p className="text-sm text-gray-900 font-medium"><span className="font-medium">Name:</span> {user.name}</p>
-                    <p className="text-sm text-gray-900 font-medium"><span className="font-medium">Hourly Rate:</span> ${user.hourlyRate?.toFixed(2)}/hr</p>
+                    <p className="text-sm text-gray-900 font-medium">
+                      <span className="font-medium">Pay:</span>{' '}
+                      {user.payType === 'perShift'
+                        ? `$${(user.shiftRate ?? 0).toFixed(2)}/shift`
+                        : `$${(user.hourlyRate ?? 0).toFixed(2)}/hr`}
+                    </p>
                   </div>
                   
                   <div className="border-b pb-4">
@@ -528,6 +592,20 @@ export default function CaregiverDashboard() {
                         {showPin ? 'Hide' : 'Show'}
                       </button>
                     </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <input
+                        id="notificationsEnabled"
+                        type="checkbox"
+                        checked={notificationsEnabled}
+                        onChange={(e) => {
+                          setNotificationsEnabled(e.target.checked);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="notificationsEnabled" className="text-sm text-gray-700">
+                        Enable shift reminders (notifications)
+                      </label>
+                    </div>
                   </div>
                   
                   <button

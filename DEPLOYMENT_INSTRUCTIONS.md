@@ -166,6 +166,36 @@ Replace LocalStorage with a real database:
 - **Supabase**
 - **Firebase**
 
+#### Enable Push Notifications (FCM)
+
+To send browser push notifications reminding caregivers to clock in:
+
+- Add environment variables to `.env.local` and Vercel:
+  - `NEXT_PUBLIC_FIREBASE_VAPID_KEY` (Web Push key from Firebase Console)
+  - `FIREBASE_SERVER_KEY` (Server key for FCM HTTP API)
+- Ensure `public/firebase-messaging-sw.js` exists (added in repo).
+- App registers tokens on the caregiver dashboard and stores them under `notificationTokens/{userId}` in Firebase.
+- The endpoint `GET /api/send-shift-reminders` checks for shifts starting within 5 minutes and sends FCM notifications.
+
+Optional scheduling with Vercel Cron:
+
+Add to `vercel.json`:
+
+```
+{
+  "crons": [
+    {
+      "path": "/api/send-shift-reminders",
+      "schedule": "* * * * *"
+    }
+  ]
+}
+```
+
+Notes:
+- Caregivers must grant notification permission and open the app once per device.
+- Background notifications require the service worker and a supported browser.
+
 #### 2. Update API Calls
 Convert MockService to actual API:
 ```typescript

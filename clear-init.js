@@ -1,9 +1,5 @@
 // This script clears the initialization flag so Firebase will reinitialize
 // Run with: node clear-init.js
-
-const fs = require('fs');
-const path = require('path');
-
 // Since this is a browser-based app, we can't directly clear localStorage
 // But we can document how to do it
 console.log('To clear initialization flag and reinitialize Firebase:');
