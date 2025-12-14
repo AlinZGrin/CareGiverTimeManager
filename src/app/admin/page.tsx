@@ -652,7 +652,9 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Manual Shift Entry</h3>
-              <form onSubmit={editingManualShift ? handleUpdateShift : async (e) => {
+              <form
+                key={editingManualShift?.id || 'new-shift'}
+                onSubmit={editingManualShift ? handleUpdateShift : async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const caregiverId = formData.get('caregiverId') as string;
