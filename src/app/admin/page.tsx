@@ -94,8 +94,7 @@ export default function AdminDashboard() {
     const startTime = formData.get('startTime') as string;
     const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
-    const payType = (formData.get('payType') as 'hourly' | 'perShift') || 'hourly';
-    const cost = parseFloat(formData.get('cost') as string) || 0;
+    const totalCost = parseFloat(formData.get('totalCost') as string) || 0;
 
     const shiftStartTime = new Date(`${startDate}T${startTime}`).toISOString();
     const shiftEndTime = new Date(`${endDate}T${endTime}`).toISOString();
@@ -105,9 +104,9 @@ export default function AdminDashboard() {
       caregiverId,
       startTime: shiftStartTime,
       endTime: shiftEndTime,
-      payType,
-      hourlyRate: payType === 'hourly' ? cost : editingManualShift.hourlyRate,
-      shiftRate: payType === 'perShift' ? cost : editingManualShift.shiftRate,
+      payType: 'perShift',
+      hourlyRate: editingManualShift.hourlyRate,
+      shiftRate: totalCost,
     });
     setEditingManualShift(null);
     refreshData();
@@ -661,6 +660,7 @@ export default function AdminDashboard() {
                 const startTime = formData.get('startTime') as string;
                 const endDate = formData.get('endDate') as string;
                 const endTime = formData.get('endTime') as string;
+                const totalCost = parseFloat(formData.get('totalCost') as string) || 0;
                 
                 const caregiver = caregivers.find(c => c.id === caregiverId);
                 if (!caregiver) return;
@@ -673,9 +673,9 @@ export default function AdminDashboard() {
                   caregiverId,
                   startTime: shiftStartTime,
                   endTime: shiftEndTime,
-                  payType: caregiver.payType || 'hourly',
+                  payType: 'perShift',
                   hourlyRate: caregiver.hourlyRate || 0,
-                  shiftRate: caregiver.shiftRate || 0,
+                  shiftRate: totalCost,
                   isPaid: false,
                   status: 'completed',
                 };
@@ -718,18 +718,23 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Row 4: Pay Type and Cost */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Row 4: Total Cost */}
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Pay Type</label>
-                    <select name="payType" className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift?.payType || 'hourly'}>
-                      <option value="hourly">Hourly Rate</option>
-                      <option value="perShift">Per Shift Rate</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">{editingManualShift?.payType === 'perShift' ? 'Shift Cost ($)' : 'Hourly Rate ($)'}</label>
-                    <input name="cost" type="number" step="0.01" min="0" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" defaultValue={editingManualShift ? (editingManualShift.payType === 'perShift' ? editingManualShift.shiftRate || 0 : editingManualShift.hourlyRate || 0) : ''} />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Total Cost ($)</label>
+                    <input
+                      name="totalCost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      defaultValue={editingManualShift ? (
+                        editingManualShift.payType === 'perShift'
+                          ? editingManualShift.shiftRate ?? 0
+                          : calculateShiftPay(editingManualShift)
+                      ) : ''}
+                    />
                   </div>
                 </div>
 
