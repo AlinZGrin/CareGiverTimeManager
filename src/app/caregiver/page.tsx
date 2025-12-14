@@ -198,6 +198,21 @@ export default function CaregiverDashboard() {
       status: 'in-progress',
     };
     await MockService.saveShift(newShift);
+    // Update scheduled shift status to in-progress if this time falls within a scheduled assignment
+    try {
+      const scheduled = await MockService.getScheduledShiftsAsync();
+      const now = Date.now();
+      const currentScheduled = scheduled.find(s => 
+        s.caregiverId === user.id &&
+        new Date(s.scheduledStartTime).getTime() <= now &&
+        new Date(s.scheduledEndTime).getTime() >= now
+      );
+      if (currentScheduled) {
+        MockService.updateScheduledShift(currentScheduled.id, { status: 'in-progress' });
+        // refresh lists
+        loadScheduledShifts();
+      }
+    } catch {}
     setActiveShift(newShift);
     setLastShiftSummary(null);
   };
@@ -256,6 +271,17 @@ export default function CaregiverDashboard() {
     const endTime = new Date().toISOString();
     const updatedShift = { ...activeShift, endTime, status: 'completed' as const };
     await MockService.saveShift(updatedShift);
+    // Update scheduled shift status to completed if applicable
+    try {
+      const scheduled = await MockService.getScheduledShiftsAsync();
+      const matching = scheduled.find(s => s.caregiverId === activeShift.caregiverId &&
+        new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
+        new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
+      if (matching) {
+        MockService.updateScheduledShift(matching.id, { status: 'completed' });
+        loadScheduledShifts();
+      }
+    } catch {}
     
     // Calculate summary
     const start = new Date(activeShift.startTime).getTime();
