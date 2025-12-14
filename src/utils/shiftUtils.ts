@@ -69,7 +69,7 @@ export const getShiftStatusLabel = (status: string): string => {
     case 'open':
       return 'Open';
     case 'assigned':
-      return 'My Shift';
+      return 'Assigned';
     case 'in-progress':
       return 'In Progress';
     case 'completed':
