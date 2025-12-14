@@ -202,14 +202,19 @@ export default function CaregiverDashboard() {
     try {
       const scheduled = await MockService.getScheduledShiftsAsync();
       const now = Date.now();
-      const currentScheduled = scheduled.find(s => 
-        s.caregiverId === user.id &&
-        new Date(s.scheduledStartTime).getTime() <= now &&
-        new Date(s.scheduledEndTime).getTime() >= now
-      );
+      const earlyToleranceMs = 30 * 60 * 1000; // allow clock-in up to 30 mins before scheduled start
+      const lateToleranceMs = 5 * 60 * 1000;   // allow slight delay past scheduled end
+      const candidates = scheduled
+        .filter(s => s.caregiverId === user.id && s.status === 'assigned')
+        .filter(s => {
+          const start = new Date(s.scheduledStartTime).getTime();
+          const end = new Date(s.scheduledEndTime).getTime();
+          return (start - earlyToleranceMs) <= now && now <= (end + lateToleranceMs);
+        })
+        .sort((a, b) => new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime());
+      const currentScheduled = candidates[0] || null;
       if (currentScheduled) {
         MockService.updateScheduledShift(currentScheduled.id, { status: 'in-progress' });
-        // refresh lists
         loadScheduledShifts();
       }
     } catch {}
