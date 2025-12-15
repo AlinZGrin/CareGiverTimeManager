@@ -215,8 +215,24 @@ export default function CaregiverDashboard() {
       const currentScheduled = candidates[0] || null;
       if (currentScheduled) {
         MockService.updateScheduledShift(currentScheduled.id, { status: 'in-progress' });
-        loadScheduledShifts();
+      } else {
+        // No scheduled shift — create one on-the-fly so admin can see it
+        const scheduledStartTime = new Date().toISOString();
+        const unscheduledShift: ScheduledShift = {
+          id: `unscheduled-${Date.now()}`,
+          date: scheduledStartTime.split('T')[0],
+          scheduledStartTime,
+          scheduledEndTime: scheduledStartTime, // placeholder; updated on clock-out
+          caregiverId: user.id,
+          status: 'in-progress',
+          shiftName: 'Unscheduled Shift',
+          payType: user.payType,
+          hourlyRate: user.hourlyRate,
+          shiftRate: user.shiftRate,
+        };
+        MockService.saveScheduledShift(unscheduledShift);
       }
+      loadScheduledShifts();
     } catch {}
     setActiveShift(newShift);
     setLastShiftSummary(null);
@@ -239,6 +255,18 @@ export default function CaregiverDashboard() {
       const endTime = new Date().toISOString();
       const updatedShift = { ...shiftToEnd, endTime, status: 'completed' as const };
       await MockService.saveShift(updatedShift);
+      // Close any scheduled shift (including unscheduled auto-created) for the previous caregiver
+      try {
+        const scheduled = await MockService.getScheduledShiftsAsync();
+        const matching = scheduled.find(s => s.caregiverId === shiftToEnd.caregiverId &&
+          new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
+          new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
+        const inProgressFallback = scheduled.find(s => s.caregiverId === shiftToEnd.caregiverId && s.status === 'in-progress');
+        const target = matching || inProgressFallback;
+        if (target) {
+          MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
+        }
+      } catch {}
     }
     
     // Step 2: Small delay to ensure Firebase sync
@@ -256,8 +284,45 @@ export default function CaregiverDashboard() {
       status: 'in-progress',
     };
     await MockService.saveShift(newShift);
+
+    // Mirror clock-in behavior: attach to scheduled shift or create an unscheduled in-progress record
+    try {
+      const scheduled = await MockService.getScheduledShiftsAsync();
+      const now = Date.now();
+      const earlyToleranceMs = 30 * 60 * 1000;
+      const lateToleranceMs = 5 * 60 * 1000;
+      const candidates = scheduled
+        .filter(s => s.caregiverId === user.id && s.status === 'assigned')
+        .filter(s => {
+          const start = new Date(s.scheduledStartTime).getTime();
+          const end = new Date(s.scheduledEndTime).getTime();
+          return (start - earlyToleranceMs) <= now && now <= (end + lateToleranceMs);
+        })
+        .sort((a, b) => new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime());
+      const currentScheduled = candidates[0] || null;
+      if (currentScheduled) {
+        MockService.updateScheduledShift(currentScheduled.id, { status: 'in-progress' });
+      } else {
+        const scheduledStartTime = newShift.startTime;
+        const unscheduledShift: ScheduledShift = {
+          id: `unscheduled-${Date.now()}`,
+          date: scheduledStartTime.split('T')[0],
+          scheduledStartTime,
+          scheduledEndTime: scheduledStartTime,
+          caregiverId: user.id,
+          status: 'in-progress',
+          shiftName: 'Unscheduled Shift',
+          payType: user.payType,
+          hourlyRate: user.hourlyRate,
+          shiftRate: user.shiftRate,
+        };
+        MockService.saveScheduledShift(unscheduledShift);
+      }
+    } catch {}
+
     setActiveShift(newShift);
     setLastShiftSummary(null);
+    loadScheduledShifts();
     
     // Show success message
     setFeedbackMessage({ 
@@ -282,8 +347,10 @@ export default function CaregiverDashboard() {
       const matching = scheduled.find(s => s.caregiverId === activeShift.caregiverId &&
         new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
         new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
-      if (matching) {
-        MockService.updateScheduledShift(matching.id, { status: 'completed' });
+      const inProgressFallback = scheduled.find(s => s.caregiverId === activeShift.caregiverId && s.status === 'in-progress');
+      const target = matching || inProgressFallback;
+      if (target) {
+        MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
         loadScheduledShifts();
       }
     } catch {}

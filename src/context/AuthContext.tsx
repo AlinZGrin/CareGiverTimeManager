@@ -24,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginAdmin = async (email: string, password: string): Promise<boolean> => {
+    const emailLower = email.toLowerCase();
     try {
       // Try Firebase Auth first
       const authResult = await loginWithFirebaseAuth(email, password);
@@ -32,8 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authResult.success) {
         // Firebase Auth successful - now get the user data from database
         const users = await MockService.getUsersAsync();
-        const emailLower = email.toLowerCase();
-        
         const admin = users.find((u) => u.role === 'admin' && u.email?.toLowerCase() === emailLower);
         
         if (admin) {
@@ -46,10 +45,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await logoutFromFirebaseAuth();
         return false;
       }
+
+      // Firebase rejected the credential; fall back to the stored admin record (firebase DB/local) to avoid stale cached password
+      const users = await MockService.getUsersAsync();
+      const adminFromDb = users.find((u) => u.role === 'admin' && u.email?.toLowerCase() === emailLower && u.password === password);
+      if (adminFromDb) {
+        setUser(adminFromDb);
+        router.push('/admin');
+        return true;
+      }
       
       return false;
     } catch (error) {
       console.error('[LOGIN DEBUG] Login error:', error);
+      // Last-resort fallback if Firebase throws unexpectedly but DB has matching credentials
+      try {
+        const users = await MockService.getUsersAsync();
+        const adminFromDb = users.find((u) => u.role === 'admin' && u.email?.toLowerCase() === emailLower && u.password === password);
+        if (adminFromDb) {
+          setUser(adminFromDb);
+          router.push('/admin');
+          return true;
+        }
+      } catch (_err) {}
       return false;
     }
   };
