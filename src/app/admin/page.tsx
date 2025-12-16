@@ -410,6 +410,7 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
+                </form>
               </div>
 
               {/* Right: Weekly Calendar */}
