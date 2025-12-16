@@ -383,4 +383,25 @@ vercel unlink
 
 ---
 
+## QA Environment (Vercel)
+
+- **Overview:** Pushing to the `qa` branch will trigger a GitHub Actions workflow that builds and deploys a QA preview to Vercel.
+- **Workflow added:** `.github/workflows/deploy-qa.yml` (triggers on pushes to `qa`).
+- **Required GitHub Secrets:**
+  - `VERCEL_TOKEN` — a personal token from Vercel (Project → Settings → Tokens).
+  - `VERCEL_ORG_ID` — your Vercel organization or team ID (Project Settings or team settings).
+  - `VERCEL_PROJECT_ID` — the Vercel project ID (Project Settings → General).
+  - `QA_ALIAS_DOMAIN` — optional; set to a custom QA domain (e.g., `qa.example.com`) to alias the deployment.
+- **How it works:** The workflow installs dependencies, runs `npm run build`, then calls the Vercel Action to create a preview deployment. If `QA_ALIAS_DOMAIN` is set, the deployment will be aliased to that domain.
+- **Trigger:** Create a `qa` branch and push changes:
+
+```bash
+git checkout -b qa
+git push origin qa
+```
+
+- **Find the URL:** The action logs include the preview URL; if `QA_ALIAS_DOMAIN` is set, visit that domain.
+- **Notes:** You must set the secrets in the repository Settings → Secrets & variables → Actions before the workflow can deploy.
+
+
 **Your app is ready to go live! 🚀**
