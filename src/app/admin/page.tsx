@@ -1129,17 +1129,37 @@ function WeeklyCalendar({
               )}
               {shiftsByDay[i].map(s => {
                 const caregiver = s.caregiverId ? caregivers.find(c => c.id === s.caregiverId) : null;
-                const start = s.scheduledStartTime ? formatShiftTime(s.scheduledStartTime) : '';
-                const end = s.scheduledEndTime ? formatShiftTime(s.scheduledEndTime) : '';
+                const sStartMs = s.scheduledStartTime ? new Date(s.scheduledStartTime).getTime() : NaN;
+                const sEndMs = s.scheduledEndTime ? new Date(s.scheduledEndTime).getTime() : NaN;
+                const dayStartMs = day.getTime();
+                const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+                const continuedFromPrev = !isNaN(sStartMs) && sStartMs < dayStartMs;
+                const continuesNextDay = !isNaN(sEndMs) && sEndMs > dayEndMs;
+
+                const visibleStartIso = !isNaN(sStartMs) ? new Date(Math.max(sStartMs, dayStartMs)).toISOString() : '';
+                const visibleEndIso = !isNaN(sEndMs) ? new Date(Math.min(sEndMs, dayEndMs)).toISOString() : '';
+                const startLabel = visibleStartIso ? formatShiftTime(visibleStartIso) : '';
+                const endLabel = visibleEndIso ? formatShiftTime(visibleEndIso) : '';
+
                 return (
                   <button
                     key={s.id}
                     onClick={() => onEdit(s)}
                     className="w-full text-left p-2 bg-white rounded shadow-sm hover:shadow-md text-sm"
-                    title={`${s.shiftName || 'Shift'} • ${start}${end ? ' - ' + end : ''}`}
+                    title={`${s.shiftName || 'Shift'} • ${startLabel}${endLabel ? ' - ' + endLabel : ''}`}
                   >
-                    <div className="font-semibold text-gray-900">{s.shiftName || 'Open Shift'}</div>
-                    <div className="text-[12px] text-gray-700">{start}{end ? ` - ${end}` : ''} • {caregiver ? caregiver.name : 'Unassigned'}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-gray-900">{s.shiftName || 'Open Shift'}</div>
+                      <div className="flex items-center gap-2">
+                        {continuedFromPrev && (
+                          <span className="text-[11px] text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Continued</span>
+                        )}
+                        {continuesNextDay && (
+                          <span className="text-[11px] text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Continues</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-[12px] text-gray-700">{startLabel}{endLabel ? ` - ${endLabel}` : ''} • {caregiver ? caregiver.name : 'Unassigned'}</div>
                   </button>
                 );
               })}
