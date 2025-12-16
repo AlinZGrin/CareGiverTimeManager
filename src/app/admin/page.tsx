@@ -1084,12 +1084,22 @@ function WeeklyCalendar({
   });
 
   const shiftsByDay = days.map(day => {
-    const start = day.getTime();
-    const end = start + 24 * 60 * 60 * 1000;
-    return scheduledShifts.filter(s => {
-      const t = s.scheduledStartTime ? new Date(s.scheduledStartTime).getTime() : NaN;
-      return t >= start && t < end;
-    }).sort((a, b) => new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime());
+    const dayStart = day.getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+    // include any shift that overlaps this day
+    const list = scheduledShifts
+      .map(s => {
+        const sStart = s.scheduledStartTime ? new Date(s.scheduledStartTime).getTime() : NaN;
+        const sEnd = s.scheduledEndTime ? new Date(s.scheduledEndTime).getTime() : sStart;
+        const overlaps = !isNaN(sStart) && sStart < dayEnd && sEnd > dayStart;
+        return { s, sStart, sEnd, overlaps };
+      })
+      .filter(x => x.overlaps)
+      .sort((a, b) => a.sStart - b.sStart)
+      .map(x => x.s);
+
+    return list;
   });
 
   const prevWeek = () => setWeekStart(ws => { const d = new Date(ws); d.setDate(d.getDate() - 7); return d; });
