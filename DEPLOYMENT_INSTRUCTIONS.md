@@ -403,5 +403,37 @@ git push origin qa
 - **Find the URL:** The action logs include the preview URL; if `QA_ALIAS_DOMAIN` is set, visit that domain.
 - **Notes:** You must set the secrets in the repository Settings → Secrets & variables → Actions before the workflow can deploy.
 
+### QA Firebase configuration
+
+- **Summary:** The app reads Firebase configuration from environment variables (see `src/services/firebase.ts`). The QA workflow can inject a separate Firebase project's credentials at build time using GitHub Actions secrets (recommended) or by setting Preview environment variables in Vercel.
+- **Exact environment keys the app expects (set these for QA):**
+  - `NEXT_PUBLIC_FIREBASE_API_KEY`
+  - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+  - `NEXT_PUBLIC_FIREBASE_DATABASE_URL`
+  - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+  - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+  - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+  - `NEXT_PUBLIC_FIREBASE_APP_ID`
+  - `NEXT_PUBLIC_FIREBASE_VAPID_KEY` (for FCM web push)
+  - `FIREBASE_SERVER_KEY` (server key used by backend to send FCM messages)
+
+- **Recommended GitHub Secret names (examples):**
+  - `QA_NEXT_PUBLIC_FIREBASE_API_KEY`
+  - `QA_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+  - `QA_NEXT_PUBLIC_FIREBASE_DATABASE_URL`
+  - `QA_NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+  - `QA_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+  - `QA_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+  - `QA_NEXT_PUBLIC_FIREBASE_APP_ID`
+  - `QA_NEXT_PUBLIC_FIREBASE_VAPID_KEY`
+  - `QA_FIREBASE_SERVER_KEY`
+
+- **How to wire them (2 options):**
+  - Preferred: Add the `QA_...` secrets to the repository (Settings → Secrets & variables → Actions). The QA workflow will inject them into the build and deploy steps.
+  - Alternative: Add the same variables directly to your Vercel project under Settings → Environment Variables for the "Preview" environment (these will be used by Preview/QA deployments).
+
+- **Verify:** Deploy to `qa` and visit the debug page at `/debug` to confirm Firebase variables are detected (the app prints whether `NEXT_PUBLIC_FIREBASE_API_KEY` and `NEXT_PUBLIC_FIREBASE_DATABASE_URL` are set).
+
+
 
 **Your app is ready to go live! 🚀**
