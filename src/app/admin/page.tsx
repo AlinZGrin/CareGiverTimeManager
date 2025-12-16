@@ -1149,7 +1149,7 @@ function WeeklyCalendar({
                     title={`${s.shiftName || 'Shift'} • ${startLabel}${endLabel ? ' - ' + endLabel : ''}`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-semibold text-gray-900">{s.shiftName || 'Open Shift'}</div>
+                      <div className="font-semibold text-gray-900">{caregiver ? caregiver.name : 'Unassigned'}</div>
                       <div className="flex items-center gap-2">
                         {continuedFromPrev && (
                           <span className="text-[11px] text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Continued</span>
@@ -1159,7 +1159,10 @@ function WeeklyCalendar({
                         )}
                       </div>
                     </div>
-                    <div className="text-[12px] text-gray-700">{startLabel}{endLabel ? ` - ${endLabel}` : ''} • {caregiver ? caregiver.name : 'Unassigned'}</div>
+                    <div className="text-[12px] text-gray-700">
+                      <span className="font-medium text-gray-900">{s.shiftName || 'Open Shift'}</span>
+                      <span className="text-gray-700">{startLabel ? ` — ${startLabel}${endLabel ? ` - ${endLabel}` : ''}` : ''}</span>
+                    </div>
                   </button>
                 );
               })}
