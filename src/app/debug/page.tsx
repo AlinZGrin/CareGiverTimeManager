@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { isFirebaseConfigured } from '../../services/firebase';
+import { MockService } from '../../services/mockData';
 
 export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -31,7 +32,27 @@ export default function DebugPage() {
     };
 
     getDebugInfo();
+    // Expose MockService to the window for interactive debugging in the console
+    try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      window.MockService = MockService;
+    } catch (_) {}
   }, []);
+
+  const pushLocalUsersToFirebase = () => {
+    try {
+      const users = MockService.getUsers();
+      users.forEach((u) => MockService.saveUser(u));
+      // eslint-disable-next-line no-console
+      console.log('[Debug] Requested save of local users to Firebase');
+      alert('Requested save of local users to Firebase. Check console for any errors.');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Debug] pushLocalUsersToFirebase failed', err);
+      alert('Failed to request save. See console for details.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -40,6 +61,9 @@ export default function DebugPage() {
         <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
           {debugInfo}
         </pre>
+        <div className="mt-4">
+          <button onClick={pushLocalUsersToFirebase} className="px-4 py-2 bg-blue-600 text-white rounded">Push Local Users to Firebase</button>
+        </div>
         <div className="mt-6">
           <Link href="/" className="text-blue-600 hover:underline">← Back to Login</Link>
         </div>
