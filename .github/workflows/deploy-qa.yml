@@ -38,7 +38,6 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: .
-          production: false
           alias-domains: ${{ secrets.QA_ALIAS_DOMAIN }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
