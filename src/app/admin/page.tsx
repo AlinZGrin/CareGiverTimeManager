@@ -1101,10 +1101,10 @@ function WeeklyCalendar({
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <button onClick={prevWeek} className="px-3 py-1 bg-gray-100 rounded">Prev</button>
-          <button onClick={nextWeek} className="px-3 py-1 bg-gray-100 rounded">Next</button>
+          <button onClick={prevWeek} className="px-3 py-1 bg-gray-100 rounded font-semibold text-gray-800">Prev</button>
+          <button onClick={nextWeek} className="px-3 py-1 bg-gray-100 rounded font-semibold text-gray-800">Next</button>
         </div>
-        <div className="text-sm text-gray-700 font-semibold">
+        <div className="text-sm text-gray-800 font-semibold">
           {days[0].toLocaleDateString()} - {new Date(days[6].getTime() + (24*60*60*1000 -1)).toLocaleDateString()}
         </div>
       </div>
@@ -1112,22 +1112,24 @@ function WeeklyCalendar({
       <div className="grid grid-cols-7 gap-2">
         {days.map((day, i) => (
           <div key={day.toISOString()} className="border rounded p-2 bg-gray-50">
-            <div className="text-xs font-semibold mb-2">{formatHeader(day)}</div>
+            <div className="text-xs font-semibold text-gray-900 mb-2">{formatHeader(day)}</div>
             <div className="space-y-2">
               {shiftsByDay[i].length === 0 && (
                 <div className="text-xs text-gray-400">No shifts</div>
               )}
               {shiftsByDay[i].map(s => {
                 const caregiver = s.caregiverId ? caregivers.find(c => c.id === s.caregiverId) : null;
+                const start = s.scheduledStartTime ? formatShiftTime(s.scheduledStartTime) : '';
+                const end = s.scheduledEndTime ? formatShiftTime(s.scheduledEndTime) : '';
                 return (
                   <button
                     key={s.id}
                     onClick={() => onEdit(s)}
-                    className="w-full text-left p-2 bg-white rounded shadow-sm hover:shadow-md text-xs"
-                    title={`${s.shiftName || 'Shift'} • ${formatShiftTime(s.scheduledStartTime)} - ${formatShiftTime(s.scheduledEndTime)}`}
+                    className="w-full text-left p-2 bg-white rounded shadow-sm hover:shadow-md text-sm"
+                    title={`${s.shiftName || 'Shift'} • ${start}${end ? ' - ' + end : ''}`}
                   >
-                    <div className="font-medium">{s.shiftName || 'Open Shift'}</div>
-                    <div className="text-[11px] text-gray-600">{formatShiftTime(s.scheduledStartTime)} • {caregiver ? caregiver.name : 'Unassigned'}</div>
+                    <div className="font-semibold text-gray-900">{s.shiftName || 'Open Shift'}</div>
+                    <div className="text-[12px] text-gray-700">{start}{end ? ` - ${end}` : ''} • {caregiver ? caregiver.name : 'Unassigned'}</div>
                   </button>
                 );
               })}
