@@ -100,7 +100,9 @@ const saveUserToFirebase = async (user: User) => {
     const userRef = ref(db, `users/${user.id}`);
     await set(userRef, user);
   } catch {
-    // Silent failure
+    // Log failure to help debugging (don't expose secrets)
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] saveUserToFirebase failed for', user.id);
   }
 };
 
@@ -112,7 +114,8 @@ const deleteUserFromFirebase = async (userId: string) => {
     const userRef = ref(db, `users/${userId}`);
     await remove(userRef);
   } catch {
-    // Silent failure
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] deleteUserFromFirebase failed for', userId);
   }
 };
 
@@ -124,7 +127,8 @@ const saveShiftToFirebase = async (shift: Shift) => {
     const shiftRef = ref(db, `shifts/${shift.id}`);
     await set(shiftRef, shift);
   } catch {
-    // Silent failure
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] saveShiftToFirebase failed for', shift.id);
   }
 };
 
@@ -136,7 +140,8 @@ const deleteShiftFromFirebase = async (shiftId: string) => {
     const shiftRef = ref(db, `shifts/${shiftId}`);
     await remove(shiftRef);
   } catch {
-    // Silent failure
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] deleteShiftFromFirebase failed for', shiftId);
   }
 };
 
@@ -168,7 +173,8 @@ const saveScheduledShiftToFirebase = async (shift: ScheduledShift) => {
     const shiftRef = ref(db, `scheduled_shifts/${shift.id}`);
     await set(shiftRef, shift);
   } catch {
-    // Silent failure
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] saveScheduledShiftToFirebase failed for', shift.id);
   }
 };
 
@@ -180,7 +186,8 @@ const deleteScheduledShiftFromFirebase = async (shiftId: string) => {
     const shiftRef = ref(db, `scheduled_shifts/${shiftId}`);
     await remove(shiftRef);
   } catch {
-    // Silent failure
+    // eslint-disable-next-line no-console
+    console.error('[Firebase] deleteScheduledShiftFromFirebase failed for', shiftId);
   }
 };
 
