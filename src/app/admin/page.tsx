@@ -323,12 +323,13 @@ export default function AdminDashboard() {
 
         {activeTab === 'schedule' && (
           <div className="space-y-6">
-            {/* Create/Edit Scheduled Shift Form */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
-                {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
-              </h3>
-              <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left: Create/Edit Scheduled Shift Form */}
+              <div className="md:col-span-1 bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                  {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
+                </h3>
+                <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="space-y-4">
                 {/* Row 1: Start Date and Start Time */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
                   <div className="col-span-2 md:col-span-1">
@@ -409,10 +410,20 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
-              </form>
+                </form>
+              </div>
+
+              {/* Right: Weekly Calendar */}
+              <div className="md:col-span-2 bg-white p-6 rounded-lg shadow">
+                <WeeklyCalendar
+                  scheduledShifts={scheduledShifts}
+                  caregivers={caregivers}
+                  onEdit={(s) => setEditingShift(s)}
+                />
+              </div>
             </div>
 
-            {/* Scheduled Shifts List */}
+            {/* Scheduled Shifts List (full width below) */}
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Scheduled Shifts</h3>
               
@@ -1046,5 +1057,119 @@ function TokenStatus({ caregiverId }: { caregiverId: string }) {
     <span className={`inline-flex items-center gap-1 text-xs ${hasToken ? 'text-green-700' : 'text-gray-500'}`}>
       {hasToken ? 'Token Active' : 'No Token'}
     </span>
+  );
+}
+
+function WeeklyCalendar({
+  scheduledShifts,
+  caregivers,
+  onEdit,
+}: {
+  scheduledShifts: ScheduledShift[];
+  caregivers: User[];
+  onEdit: (s: ScheduledShift) => void;
+}) {
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date();
+    const day = (d.getDay() + 6) % 7; // Monday start
+    d.setDate(d.getDate() - day);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    const dt = new Date(weekStart);
+    dt.setDate(dt.getDate() + i);
+    return dt;
+  });
+
+  const shiftsByDay = days.map(day => {
+    const dayStart = day.getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+    // include any shift that overlaps this day
+    const list = scheduledShifts
+      .map(s => {
+        const sStart = s.scheduledStartTime ? new Date(s.scheduledStartTime).getTime() : NaN;
+        const sEnd = s.scheduledEndTime ? new Date(s.scheduledEndTime).getTime() : sStart;
+        const overlaps = !isNaN(sStart) && sStart < dayEnd && sEnd > dayStart;
+        return { s, sStart, sEnd, overlaps };
+      })
+      .filter(x => x.overlaps)
+      .sort((a, b) => a.sStart - b.sStart)
+      .map(x => x.s);
+
+    return list;
+  });
+
+  const prevWeek = () => setWeekStart(ws => { const d = new Date(ws); d.setDate(d.getDate() - 7); return d; });
+  const nextWeek = () => setWeekStart(ws => { const d = new Date(ws); d.setDate(d.getDate() + 7); return d; });
+
+  const formatHeader = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <button onClick={prevWeek} className="px-3 py-1 bg-gray-100 rounded font-semibold text-gray-800">Prev</button>
+          <button onClick={nextWeek} className="px-3 py-1 bg-gray-100 rounded font-semibold text-gray-800">Next</button>
+        </div>
+        <div className="text-sm text-gray-800 font-semibold">
+          {days[0].toLocaleDateString()} - {new Date(days[6].getTime() + (24*60*60*1000 -1)).toLocaleDateString()}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day, i) => (
+          <div key={day.toISOString()} className="border rounded p-2 bg-gray-50">
+            <div className="text-xs font-semibold text-gray-900 mb-2">{formatHeader(day)}</div>
+            <div className="space-y-2">
+              {shiftsByDay[i].length === 0 && (
+                <div className="text-xs text-gray-400">No shifts</div>
+              )}
+              {shiftsByDay[i].map(s => {
+                const caregiver = s.caregiverId ? caregivers.find(c => c.id === s.caregiverId) : null;
+                const sStartMs = s.scheduledStartTime ? new Date(s.scheduledStartTime).getTime() : NaN;
+                const sEndMs = s.scheduledEndTime ? new Date(s.scheduledEndTime).getTime() : NaN;
+                const dayStartMs = day.getTime();
+                const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+                const continuedFromPrev = !isNaN(sStartMs) && sStartMs < dayStartMs;
+                const continuesNextDay = !isNaN(sEndMs) && sEndMs > dayEndMs;
+
+                const visibleStartIso = !isNaN(sStartMs) ? new Date(Math.max(sStartMs, dayStartMs)).toISOString() : '';
+                const visibleEndIso = !isNaN(sEndMs) ? new Date(Math.min(sEndMs, dayEndMs)).toISOString() : '';
+                const startLabel = visibleStartIso ? formatShiftTime(visibleStartIso) : '';
+                const endLabel = visibleEndIso ? formatShiftTime(visibleEndIso) : '';
+
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onEdit(s)}
+                    className="w-full text-left p-2 bg-white rounded shadow-sm hover:shadow-md text-sm"
+                    title={`${s.shiftName || 'Shift'} • ${startLabel}${endLabel ? ' - ' + endLabel : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-gray-900">{caregiver ? caregiver.name : 'Unassigned'}</div>
+                      <div className="flex items-center gap-2">
+                        {continuedFromPrev && (
+                          <span className="text-[11px] text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Continued</span>
+                        )}
+                        {continuesNextDay && (
+                          <span className="text-[11px] text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Continues</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-[12px] text-gray-700">
+                      <span className="font-medium text-gray-900">{s.shiftName || 'Open Shift'}</span>
+                      <span className="text-gray-700">{startLabel ? ` — ${startLabel}${endLabel ? ` - ${endLabel}` : ''}` : ''}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
