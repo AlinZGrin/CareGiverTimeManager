@@ -199,6 +199,7 @@ export default function AdminDashboard() {
     const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
     const shiftName = formData.get('shiftName') as string;
+    const caregiverId = formData.get('caregiverId') as string;
     
     const scheduledStart = new Date(`${startDate}T${startTime}`).toISOString();
     const scheduledEnd = new Date(`${endDate}T${endTime}`).toISOString();
@@ -208,8 +209,8 @@ export default function AdminDashboard() {
       date: startDate,
       scheduledStartTime: scheduledStart,
       scheduledEndTime: scheduledEnd,
-      caregiverId: null,
-      status: 'open',
+      caregiverId: caregiverId || null,
+      status: caregiverId ? 'assigned' : 'open',
       shiftName: shiftName || undefined,
     };
     
@@ -235,6 +236,7 @@ export default function AdminDashboard() {
     const endDate = formData.get('endDate') as string;
     const endTime = formData.get('endTime') as string;
     const shiftName = formData.get('shiftName') as string;
+    const caregiverId = formData.get('caregiverId') as string;
     
     const scheduledStart = new Date(`${startDate}T${startTime}`).toISOString();
     const scheduledEnd = new Date(`${endDate}T${endTime}`).toISOString();
@@ -244,6 +246,8 @@ export default function AdminDashboard() {
       scheduledStartTime: scheduledStart,
       scheduledEndTime: scheduledEnd,
       shiftName: shiftName || undefined,
+      caregiverId: caregiverId || null,
+      status: caregiverId ? 'assigned' : 'open',
     });
     
     setEditingShift(null);
@@ -452,7 +456,26 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
-                {/* Row 3: Buttons */}
+                {/* Row 4: Assign Caregiver */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Assign to Caregiver (optional)</label>
+                    <select 
+                      name="caregiverId"
+                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      defaultValue={editingShift ? editingShift.caregiverId || '' : ''}
+                    >
+                      <option value="">Leave Open (Unassigned)</option>
+                      {caregivers.filter(c => c.isActive).map(caregiver => (
+                        <option key={caregiver.id} value={caregiver.id}>
+                          {caregiver.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                {/* Row 5: Buttons */}
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 bg-green-600 text-white font-semibold p-3 rounded hover:bg-green-700 text-sm md:text-base">
                     {editingShift ? 'Update' : 'Publish'}
