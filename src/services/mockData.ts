@@ -527,6 +527,47 @@ export const MockService = {
     }
   },
 
+  // Automatically end any in-progress shift system-wide (async version for Firebase sync)
+  // This enforces the business rule: only one shift can be 'in-progress' at a time
+  autoEndActiveShiftAsync: async (): Promise<{ ended: boolean; caregiverName?: string; shiftId?: string }> => {
+    const shifts = await MockService.getShiftsAsync();
+    const activeShift = shifts.find((s) => !s.endTime && s.status === 'in-progress');
+    
+    if (!activeShift) {
+      return { ended: false };
+    }
+    
+    // End the active shift
+    const endTime = new Date().toISOString();
+    const updatedShift = { ...activeShift, endTime, status: 'completed' as const };
+    await MockService.saveShift(updatedShift);
+    
+    // Also close any scheduled shift for this caregiver
+    try {
+      const scheduled = await MockService.getScheduledShiftsAsync();
+      const matching = scheduled.find(s => s.caregiverId === activeShift.caregiverId &&
+        new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
+        new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
+      const inProgressFallback = scheduled.find(s => s.caregiverId === activeShift.caregiverId && s.status === 'in-progress');
+      const target = matching || inProgressFallback;
+      if (target) {
+        MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
+      }
+    } catch {
+      // Ignore scheduled shift update errors
+    }
+    
+    // Get caregiver name for feedback
+    const users = await MockService.getUsersAsync();
+    const caregiver = users.find(u => u.id === activeShift.caregiverId);
+    
+    return {
+      ended: true,
+      caregiverName: caregiver?.name || 'Unknown Caregiver',
+      shiftId: activeShift.id
+    };
+  },
+
   // Scheduled Shifts Management
   getScheduledShifts: (): ScheduledShift[] => {
     if (typeof window === 'undefined') return [];
