@@ -16,6 +16,9 @@ import {
   calculateShiftPay
 } from '../../utils/shiftUtils';
 
+// Constants
+const FIREBASE_SYNC_DELAY_MS = 300; // Delay to ensure Firebase sync after ending a shift
+
 export default function CaregiverDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -181,12 +184,32 @@ export default function CaregiverDashboard() {
       return;
     }
     
-    // No concurrent shift - proceed with clock in
-    proceedWithClockIn();
+    // No concurrent shift from another user - proceed with clock in
+    // This will automatically end any in-progress shift from the same user
+    await proceedWithClockIn();
   };
 
   const proceedWithClockIn = async () => {
     if (!user) return;
+    
+    // CRITICAL: Automatically end any in-progress shift system-wide before starting new one
+    // This enforces the business rule: only one shift can be 'in-progress' at a time
+    const endedShiftInfo = await MockService.autoEndActiveShiftAsync();
+    
+    if (endedShiftInfo.ended && endedShiftInfo.caregiverName) {
+      // Show feedback that previous shift was automatically ended
+      setFeedbackMessage({ 
+        type: 'success', 
+        text: `Previous shift for ${endedShiftInfo.caregiverName} has been automatically ended.` 
+      });
+      setTimeout(() => setFeedbackMessage(null), 3000);
+    }
+    
+    // Small delay to ensure Firebase sync after ending previous shift
+    if (endedShiftInfo.ended) {
+      await new Promise(resolve => setTimeout(resolve, FIREBASE_SYNC_DELAY_MS));
+    }
+    
     const newShift: Shift = {
       id: Date.now().toString(),
       caregiverId: user.id,
@@ -247,32 +270,13 @@ export default function CaregiverDashboard() {
     // Close warning modal first to prevent double-clicks
     setConcurrentShiftWarning(null);
     
-    // Step 1: Get fresh shift data and clock out the other caregiver
-    const shifts = await MockService.getShiftsAsync();
-    const shiftToEnd = shifts.find(s => s.id === concurrentShiftWarning.shiftId);
+    // Use centralized method to end any in-progress shift
+    await MockService.autoEndActiveShiftAsync();
     
-    if (shiftToEnd && shiftToEnd.status === 'in-progress') {
-      const endTime = new Date().toISOString();
-      const updatedShift = { ...shiftToEnd, endTime, status: 'completed' as const };
-      await MockService.saveShift(updatedShift);
-      // Close any scheduled shift (including unscheduled auto-created) for the previous caregiver
-      try {
-        const scheduled = await MockService.getScheduledShiftsAsync();
-        const matching = scheduled.find(s => s.caregiverId === shiftToEnd.caregiverId &&
-          new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
-          new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
-        const inProgressFallback = scheduled.find(s => s.caregiverId === shiftToEnd.caregiverId && s.status === 'in-progress');
-        const target = matching || inProgressFallback;
-        if (target) {
-          MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
-        }
-      } catch {}
-    }
+    // Small delay to ensure Firebase sync
+    await new Promise(resolve => setTimeout(resolve, FIREBASE_SYNC_DELAY_MS));
     
-    // Step 2: Small delay to ensure Firebase sync
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Step 3: Clock in current user
+    // Clock in current user
     const newShift: Shift = {
       id: Date.now().toString(),
       caregiverId: user.id,

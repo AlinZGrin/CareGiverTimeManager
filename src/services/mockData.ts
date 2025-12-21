@@ -527,6 +527,54 @@ export const MockService = {
     }
   },
 
+  // Automatically end any in-progress shift system-wide (async version for Firebase sync)
+  // This enforces the business rule: only one shift can be 'in-progress' at a time
+  autoEndActiveShiftAsync: async (): Promise<{ ended: boolean; caregiverName?: string; shiftId?: string }> => {
+    const shifts = await MockService.getShiftsAsync();
+    const activeShift = shifts.find((s) => !s.endTime && s.status === 'in-progress');
+    
+    if (!activeShift) {
+      return { ended: false };
+    }
+    
+    // End the active shift
+    const endTime = new Date().toISOString();
+    const updatedShift = { ...activeShift, endTime, status: 'completed' as const };
+    await MockService.saveShift(updatedShift);
+    
+    // Also close any scheduled shift for this caregiver
+    try {
+      const scheduled = await MockService.getScheduledShiftsAsync();
+      const endTimeMs = new Date(updatedShift.endTime!).getTime();
+      const startTimeMs = new Date(updatedShift.startTime).getTime();
+      
+      const matching = scheduled.find(s => s.caregiverId === activeShift.caregiverId &&
+        new Date(s.scheduledStartTime).getTime() <= endTimeMs &&
+        new Date(s.scheduledEndTime).getTime() >= startTimeMs);
+      const inProgressFallback = scheduled.find(s => s.caregiverId === activeShift.caregiverId && s.status === 'in-progress');
+      const target = matching || inProgressFallback;
+      if (target) {
+        MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
+      }
+    } catch {
+      // Ignore scheduled shift update errors - these are non-critical as the main shift 
+      // record has already been saved. Failures here typically occur due to:
+      // - Race conditions with concurrent updates
+      // - Firebase connectivity issues
+      // The main shift data is already persisted, so these can be safely ignored.
+    }
+    
+    // Get caregiver name for feedback
+    const users = await MockService.getUsersAsync();
+    const caregiver = users.find(u => u.id === activeShift.caregiverId);
+    
+    return {
+      ended: true,
+      caregiverName: caregiver?.name || 'Unknown Caregiver',
+      shiftId: activeShift.id
+    };
+  },
+
   // Scheduled Shifts Management
   getScheduledShifts: (): ScheduledShift[] => {
     if (typeof window === 'undefined') return [];
