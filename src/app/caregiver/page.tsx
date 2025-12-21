@@ -16,6 +16,9 @@ import {
   calculateShiftPay
 } from '../../utils/shiftUtils';
 
+// Constants
+const FIREBASE_SYNC_DELAY_MS = 300; // Delay to ensure Firebase sync after ending a shift
+
 export default function CaregiverDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -204,7 +207,7 @@ export default function CaregiverDashboard() {
     
     // Small delay to ensure Firebase sync after ending previous shift
     if (endedShiftInfo.ended) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, FIREBASE_SYNC_DELAY_MS));
     }
     
     const newShift: Shift = {
@@ -271,7 +274,7 @@ export default function CaregiverDashboard() {
     await MockService.autoEndActiveShiftAsync();
     
     // Small delay to ensure Firebase sync
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, FIREBASE_SYNC_DELAY_MS));
     
     // Clock in current user
     const newShift: Shift = {

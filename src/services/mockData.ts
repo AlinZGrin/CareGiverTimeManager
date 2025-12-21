@@ -545,16 +545,23 @@ export const MockService = {
     // Also close any scheduled shift for this caregiver
     try {
       const scheduled = await MockService.getScheduledShiftsAsync();
+      const endTimeMs = new Date(updatedShift.endTime!).getTime();
+      const startTimeMs = new Date(updatedShift.startTime).getTime();
+      
       const matching = scheduled.find(s => s.caregiverId === activeShift.caregiverId &&
-        new Date(s.scheduledStartTime).getTime() <= new Date(updatedShift.endTime!).getTime() &&
-        new Date(s.scheduledEndTime).getTime() >= new Date(updatedShift.startTime).getTime());
+        new Date(s.scheduledStartTime).getTime() <= endTimeMs &&
+        new Date(s.scheduledEndTime).getTime() >= startTimeMs);
       const inProgressFallback = scheduled.find(s => s.caregiverId === activeShift.caregiverId && s.status === 'in-progress');
       const target = matching || inProgressFallback;
       if (target) {
         MockService.updateScheduledShift(target.id, { status: 'completed', scheduledEndTime: endTime });
       }
     } catch {
-      // Ignore scheduled shift update errors
+      // Ignore scheduled shift update errors - these are non-critical as the main shift 
+      // record has already been saved. Failures here typically occur due to:
+      // - Race conditions with concurrent updates
+      // - Firebase connectivity issues
+      // The main shift data is already persisted, so these can be safely ignored.
     }
     
     // Get caregiver name for feedback

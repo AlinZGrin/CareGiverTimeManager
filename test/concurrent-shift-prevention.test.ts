@@ -20,10 +20,16 @@ const localStorageMock = (() => {
   };
 })();
 
-// @ts-ignore - Mock global objects for testing
-global.localStorage = localStorageMock;
-// @ts-ignore
-global.window = { localStorage: localStorageMock };
+// Setup global mocks with proper typing
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+  writable: true
+});
+
+Object.defineProperty(global, 'window', {
+  value: { localStorage: localStorageMock },
+  writable: true
+});
 
 describe('Concurrent Shift Prevention', () => {
   beforeEach(() => {
