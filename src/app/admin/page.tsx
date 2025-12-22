@@ -162,12 +162,15 @@ export default function AdminDashboard() {
     
     const confirmMessage = `Are you sure you want to mark ${shiftIds.length} shift(s) as paid?`;
     if (confirm(confirmMessage)) {
-      for (const shiftId of shiftIds) {
-        const shift = shifts.find(s => s.id === shiftId);
-        if (shift) {
-          await MockService.saveShift({ ...shift, isPaid: true });
-        }
-      }
+      // Process all shifts in parallel for better performance
+      await Promise.all(
+        shiftIds.map(async (shiftId) => {
+          const shift = shifts.find(s => s.id === shiftId);
+          if (shift) {
+            await MockService.saveShift({ ...shift, isPaid: true });
+          }
+        })
+      );
       refreshData();
     }
   };

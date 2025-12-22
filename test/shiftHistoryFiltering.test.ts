@@ -1,20 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Shift } from '../src/types';
-
-// Helper function to calculate shift pay (matches the one in shiftUtils.ts)
-function calculateShiftPay(shift: Shift): number {
-  if (!shift.endTime) return 0;
-  
-  const start = new Date(shift.startTime).getTime();
-  const end = new Date(shift.endTime).getTime();
-  const hours = (end - start) / (1000 * 60 * 60);
-  
-  if (shift.payType === 'perShift') {
-    return shift.shiftRate || 0;
-  }
-  
-  return (shift.hourlyRate || 0) * hours;
-}
+import { calculateShiftPay } from '../src/utils/shiftUtils';
 
 // Filter function that matches the implementation
 function filterShifts(
