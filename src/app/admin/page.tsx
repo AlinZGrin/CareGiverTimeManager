@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ref, get } from 'firebase/database';
 import { getFirebaseDatabase } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -112,6 +112,27 @@ export default function AdminDashboard() {
       .reduce((acc, s) => acc + calculateShiftPay(s), 0);
     setTotalOwed(owed);
   }, []);
+
+  // Memoized filtered shifts and calculations for Shift History
+  const filteredShifts = useMemo(() => {
+    return shifts.filter(s => {
+      const statusMatch = statusFilter === 'all' || 
+        (statusFilter === 'paid' && s.isPaid) || 
+        (statusFilter === 'unpaid' && !s.isPaid);
+      const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
+      return statusMatch && caregiverMatch;
+    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }, [shifts, statusFilter, caregiverFilter]);
+
+  const filteredTotal = useMemo(() => {
+    return filteredShifts
+      .filter(s => s.endTime)
+      .reduce((acc, s) => acc + calculateShiftPay(s), 0);
+  }, [filteredShifts]);
+
+  const unpaidFilteredShifts = useMemo(() => {
+    return filteredShifts.filter(s => !s.isPaid && s.endTime);
+  }, [filteredShifts]);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -869,27 +890,14 @@ export default function AdminDashboard() {
             <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">Shift History</h3>
-              {(() => {
-                // Calculate filtered shifts and totals
-                const filteredShifts = shifts.filter(s => {
-                  const statusMatch = statusFilter === 'all' || 
-                    (statusFilter === 'paid' && s.isPaid) || 
-                    (statusFilter === 'unpaid' && !s.isPaid);
-                  const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
-                  return statusMatch && caregiverMatch;
-                });
-                
-                const unpaidFilteredShifts = filteredShifts.filter(s => !s.isPaid && s.endTime);
-                
-                return unpaidFilteredShifts.length > 0 && (
-                  <button
-                    onClick={() => handleBulkMarkPaid(unpaidFilteredShifts.map(s => s.id))}
-                    className="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700"
-                  >
-                    Mark All Visible as Paid ({unpaidFilteredShifts.length})
-                  </button>
-                );
-              })()}
+              {unpaidFilteredShifts.length > 0 && (
+                <button
+                  onClick={() => handleBulkMarkPaid(unpaidFilteredShifts.map(s => s.id))}
+                  className="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700"
+                >
+                  Mark All Visible as Paid ({unpaidFilteredShifts.length})
+                </button>
+              )}
             </div>
             <table className="min-w-full">
               <thead>
@@ -917,21 +925,9 @@ export default function AdminDashboard() {
                   <th className="pb-2 text-xs md:text-sm">
                     <div className="flex flex-col gap-1">
                       <span>Cost</span>
-                      {(() => {
-                        const filteredShifts = shifts.filter(s => {
-                          const statusMatch = statusFilter === 'all' || 
-                            (statusFilter === 'paid' && s.isPaid) || 
-                            (statusFilter === 'unpaid' && !s.isPaid);
-                          const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
-                          return statusMatch && caregiverMatch && s.endTime;
-                        });
-                        const total = filteredShifts.reduce((acc, s) => acc + calculateShiftPay(s), 0);
-                        return (
-                          <span className="text-xs font-bold text-blue-600">
-                            Total: ${total.toFixed(2)}
-                          </span>
-                        );
-                      })()}
+                      <span className="text-xs font-bold text-blue-600">
+                        Total: ${filteredTotal.toFixed(2)}
+                      </span>
                     </div>
                   </th>
                   <th className="pb-2 text-xs md:text-sm">
@@ -952,70 +948,58 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const filteredShifts = shifts
-                    .filter(s => {
-                      const statusMatch = statusFilter === 'all' || 
-                        (statusFilter === 'paid' && s.isPaid) || 
-                        (statusFilter === 'unpaid' && !s.isPaid);
-                      const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
-                      return statusMatch && caregiverMatch;
-                    })
-                    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-                  
-                  return filteredShifts.map(s => {
-                    const caregiver = caregivers.find(c => c.id === s.caregiverId);
-                    const start = new Date(s.startTime);
-                    const end = s.endTime ? new Date(s.endTime) : null;
-                    const duration = end ? (end.getTime() - start.getTime()) / (1000 * 60 * 60) : 0;
-                    const cost = end ? calculateShiftPay(s) : 0;
+                {filteredShifts.map(s => {
+                  const caregiver = caregivers.find(c => c.id === s.caregiverId);
+                  const start = new Date(s.startTime);
+                  const end = s.endTime ? new Date(s.endTime) : null;
+                  const duration = end ? (end.getTime() - start.getTime()) / (1000 * 60 * 60) : 0;
+                  const cost = end ? calculateShiftPay(s) : 0;
 
-                    return (
-                      <tr key={s.id} className="border-b last:border-0">
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleDateString() : '-'}</td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
-                          {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
-                        </td>
-                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">${cost.toFixed(2)}</td>
-                        <td className="py-3 text-xs md:text-sm">
-                          {s.isPaid ? (
-                            <span className="text-green-600 font-bold">Paid</span>
-                          ) : (
-                            <span className="text-red-600 font-bold">Unpaid</span>
+                  return (
+                    <tr key={s.id} className="border-b last:border-0">
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleDateString() : '-'}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
+                        {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
+                      </td>
+                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">${cost.toFixed(2)}</td>
+                      <td className="py-3 text-xs md:text-sm">
+                        {s.isPaid ? (
+                          <span className="text-green-600 font-bold">Paid</span>
+                        ) : (
+                          <span className="text-red-600 font-bold">Unpaid</span>
+                        )}
+                      </td>
+                      <td className="py-3 text-xs">
+                        <div className="flex gap-1 flex-wrap">
+                          {!s.isPaid && s.endTime && (
+                            <button
+                              onClick={() => handleMarkPaid(s.id)}
+                              className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                            >
+                              Mark Paid
+                            </button>
                           )}
-                        </td>
-                        <td className="py-3 text-xs">
-                          <div className="flex gap-1 flex-wrap">
-                            {!s.isPaid && s.endTime && (
-                              <button
-                                onClick={() => handleMarkPaid(s.id)}
-                                className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
-                              >
-                                Mark Paid
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleEditShift(s)}
-                              className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteShift(s.id)}
-                              className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
+                          <button
+                            onClick={() => handleEditShift(s)}
+                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteShift(s.id)}
+                            className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
