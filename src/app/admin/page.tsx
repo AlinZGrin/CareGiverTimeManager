@@ -34,6 +34,11 @@ export default function AdminDashboard() {
   const [editingCredentials, setEditingCredentials] = useState<User | null>(null);
   const [editingManualShift, setEditingManualShift] = useState<Shift | null>(null);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  
+  // Shift History Filter States
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [caregiverFilter, setCaregiverFilter] = useState<string>('all');
+  
   // Manual shift form state for Manual Shift Entry
   const [manualForm, setManualForm] = useState({
     caregiverId: editingManualShift?.caregiverId || '',
@@ -127,6 +132,21 @@ export default function AdminDashboard() {
     const shift = shifts.find(s => s.id === shiftId);
     if (shift) {
       await MockService.saveShift({ ...shift, isPaid: true });
+      refreshData();
+    }
+  };
+
+  const handleBulkMarkPaid = async (shiftIds: string[]) => {
+    if (shiftIds.length === 0) return;
+    
+    const confirmMessage = `Are you sure you want to mark ${shiftIds.length} shift(s) as paid?`;
+    if (confirm(confirmMessage)) {
+      for (const shiftId of shiftIds) {
+        const shift = shifts.find(s => s.id === shiftId);
+        if (shift) {
+          await MockService.saveShift({ ...shift, isPaid: true });
+        }
+      }
       refreshData();
     }
   };
@@ -847,74 +867,155 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Shift History</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Shift History</h3>
+              {(() => {
+                // Calculate filtered shifts and totals
+                const filteredShifts = shifts.filter(s => {
+                  const statusMatch = statusFilter === 'all' || 
+                    (statusFilter === 'paid' && s.isPaid) || 
+                    (statusFilter === 'unpaid' && !s.isPaid);
+                  const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
+                  return statusMatch && caregiverMatch;
+                });
+                
+                const unpaidFilteredShifts = filteredShifts.filter(s => !s.isPaid && s.endTime);
+                
+                return unpaidFilteredShifts.length > 0 && (
+                  <button
+                    onClick={() => handleBulkMarkPaid(unpaidFilteredShifts.map(s => s.id))}
+                    className="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700"
+                  >
+                    Mark All Visible as Paid ({unpaidFilteredShifts.length})
+                  </button>
+                );
+              })()}
+            </div>
             <table className="min-w-full">
               <thead>
                 <tr className="text-left text-gray-900 font-semibold border-b">
-                  <th className="pb-2 text-xs md:text-sm">Caregiver</th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Caregiver</span>
+                      <select
+                        value={caregiverFilter}
+                        onChange={(e) => setCaregiverFilter(e.target.value)}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white font-normal"
+                      >
+                        <option value="all">All Caregivers</option>
+                        {caregivers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </th>
                   <th className="pb-2 text-xs md:text-sm">Start Date</th>
                   <th className="pb-2 text-xs md:text-sm">Start Time</th>
                   <th className="pb-2 text-xs md:text-sm">End Date</th>
                   <th className="pb-2 text-xs md:text-sm">End Time</th>
                   <th className="pb-2 text-xs md:text-sm">Duration</th>
-                  <th className="pb-2 text-xs md:text-sm">Cost</th>
-                  <th className="pb-2 text-xs md:text-sm">Status</th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Cost</span>
+                      {(() => {
+                        const filteredShifts = shifts.filter(s => {
+                          const statusMatch = statusFilter === 'all' || 
+                            (statusFilter === 'paid' && s.isPaid) || 
+                            (statusFilter === 'unpaid' && !s.isPaid);
+                          const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
+                          return statusMatch && caregiverMatch && s.endTime;
+                        });
+                        const total = filteredShifts.reduce((acc, s) => acc + calculateShiftPay(s), 0);
+                        return (
+                          <span className="text-xs font-bold text-blue-600">
+                            Total: ${total.toFixed(2)}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Status</span>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white font-normal"
+                      >
+                        <option value="all">All</option>
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid</option>
+                      </select>
+                    </div>
+                  </th>
                   <th className="pb-2 text-xs md:text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {shifts.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(s => {
-                  const caregiver = caregivers.find(c => c.id === s.caregiverId);
-                  const start = new Date(s.startTime);
-                  const end = s.endTime ? new Date(s.endTime) : null;
-                  const duration = end ? (end.getTime() - start.getTime()) / (1000 * 60 * 60) : 0;
-                  const cost = end ? calculateShiftPay(s) : 0;
+                {(() => {
+                  const filteredShifts = shifts
+                    .filter(s => {
+                      const statusMatch = statusFilter === 'all' || 
+                        (statusFilter === 'paid' && s.isPaid) || 
+                        (statusFilter === 'unpaid' && !s.isPaid);
+                      const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
+                      return statusMatch && caregiverMatch;
+                    })
+                    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+                  
+                  return filteredShifts.map(s => {
+                    const caregiver = caregivers.find(c => c.id === s.caregiverId);
+                    const start = new Date(s.startTime);
+                    const end = s.endTime ? new Date(s.endTime) : null;
+                    const duration = end ? (end.getTime() - start.getTime()) / (1000 * 60 * 60) : 0;
+                    const cost = end ? calculateShiftPay(s) : 0;
 
-                  return (
-                    <tr key={s.id} className="border-b last:border-0">
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleDateString() : '-'}</td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
-                        {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
-                      </td>
-                      <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">${cost.toFixed(2)}</td>
-                      <td className="py-3 text-xs md:text-sm">
-                        {s.isPaid ? (
-                          <span className="text-green-600 font-bold">Paid</span>
-                        ) : (
-                          <span className="text-red-600 font-bold">Unpaid</span>
-                        )}
-                      </td>
-                      <td className="py-3 text-xs">
-                        <div className="flex gap-1 flex-wrap">
-                          {!s.isPaid && s.endTime && (
-                            <button
-                              onClick={() => handleMarkPaid(s.id)}
-                              className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
-                            >
-                              Mark Paid
-                            </button>
+                    return (
+                      <tr key={s.id} className="border-b last:border-0">
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{caregiver?.name || 'Unknown'}</td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleDateString()}</td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleDateString() : '-'}</td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">
+                          {end ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : 'In Progress'}
+                        </td>
+                        <td className="py-3 text-gray-900 font-medium text-xs md:text-sm">${cost.toFixed(2)}</td>
+                        <td className="py-3 text-xs md:text-sm">
+                          {s.isPaid ? (
+                            <span className="text-green-600 font-bold">Paid</span>
+                          ) : (
+                            <span className="text-red-600 font-bold">Unpaid</span>
                           )}
-                          <button
-                            onClick={() => handleEditShift(s)}
-                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteShift(s.id)}
-                            className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="py-3 text-xs">
+                          <div className="flex gap-1 flex-wrap">
+                            {!s.isPaid && s.endTime && (
+                              <button
+                                onClick={() => handleMarkPaid(s.id)}
+                                className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleEditShift(s)}
+                              className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteShift(s.id)}
+                              className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
