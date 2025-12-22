@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ref, get } from 'firebase/database';
 import { getFirebaseDatabase } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +34,11 @@ export default function AdminDashboard() {
   const [editingCredentials, setEditingCredentials] = useState<User | null>(null);
   const [editingManualShift, setEditingManualShift] = useState<Shift | null>(null);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  
+  // Shift History Filter States
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [caregiverFilter, setCaregiverFilter] = useState<string>('all');
+  
   // Manual shift form state for Manual Shift Entry
   const [manualForm, setManualForm] = useState({
     caregiverId: editingManualShift?.caregiverId || '',
@@ -108,6 +113,27 @@ export default function AdminDashboard() {
     setTotalOwed(owed);
   }, []);
 
+  // Memoized filtered shifts and calculations for Shift History
+  const filteredShifts = useMemo(() => {
+    return shifts.filter(s => {
+      const statusMatch = statusFilter === 'all' || 
+        (statusFilter === 'paid' && s.isPaid) || 
+        (statusFilter === 'unpaid' && !s.isPaid);
+      const caregiverMatch = caregiverFilter === 'all' || s.caregiverId === caregiverFilter;
+      return statusMatch && caregiverMatch;
+    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }, [shifts, statusFilter, caregiverFilter]);
+
+  const filteredTotal = useMemo(() => {
+    return filteredShifts
+      .filter(s => s.endTime)
+      .reduce((acc, s) => acc + calculateShiftPay(s), 0);
+  }, [filteredShifts]);
+
+  const unpaidFilteredShifts = useMemo(() => {
+    return filteredShifts.filter(s => !s.isPaid && s.endTime);
+  }, [filteredShifts]);
+
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       router.push('/');
@@ -127,6 +153,24 @@ export default function AdminDashboard() {
     const shift = shifts.find(s => s.id === shiftId);
     if (shift) {
       await MockService.saveShift({ ...shift, isPaid: true });
+      refreshData();
+    }
+  };
+
+  const handleBulkMarkPaid = async (shiftIds: string[]) => {
+    if (shiftIds.length === 0) return;
+    
+    const confirmMessage = `Are you sure you want to mark ${shiftIds.length} shift(s) as paid?`;
+    if (confirm(confirmMessage)) {
+      // Process all shifts in parallel for better performance
+      await Promise.all(
+        shiftIds.map(async (shiftId) => {
+          const shift = shifts.find(s => s.id === shiftId);
+          if (shift) {
+            await MockService.saveShift({ ...shift, isPaid: true });
+          }
+        })
+      );
       refreshData();
     }
   };
@@ -847,23 +891,67 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow overflow-x-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Shift History</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Shift History</h3>
+              {unpaidFilteredShifts.length > 0 && (
+                <button
+                  onClick={() => handleBulkMarkPaid(unpaidFilteredShifts.map(s => s.id))}
+                  className="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700"
+                >
+                  Mark All Visible as Paid ({unpaidFilteredShifts.length})
+                </button>
+              )}
+            </div>
             <table className="min-w-full">
               <thead>
                 <tr className="text-left text-gray-900 font-semibold border-b">
-                  <th className="pb-2 text-xs md:text-sm">Caregiver</th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Caregiver</span>
+                      <select
+                        value={caregiverFilter}
+                        onChange={(e) => setCaregiverFilter(e.target.value)}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white font-normal"
+                      >
+                        <option value="all">All Caregivers</option>
+                        {caregivers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </th>
                   <th className="pb-2 text-xs md:text-sm">Start Date</th>
                   <th className="pb-2 text-xs md:text-sm">Start Time</th>
                   <th className="pb-2 text-xs md:text-sm">End Date</th>
                   <th className="pb-2 text-xs md:text-sm">End Time</th>
                   <th className="pb-2 text-xs md:text-sm">Duration</th>
-                  <th className="pb-2 text-xs md:text-sm">Cost</th>
-                  <th className="pb-2 text-xs md:text-sm">Status</th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Cost</span>
+                      <span className="text-xs font-bold text-blue-600">
+                        Total: ${filteredTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </th>
+                  <th className="pb-2 text-xs md:text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span>Status</span>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white font-normal"
+                      >
+                        <option value="all">All</option>
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid</option>
+                      </select>
+                    </div>
+                  </th>
                   <th className="pb-2 text-xs md:text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {shifts.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).map(s => {
+                {filteredShifts.map(s => {
                   const caregiver = caregivers.find(c => c.id === s.caregiverId);
                   const start = new Date(s.startTime);
                   const end = s.endTime ? new Date(s.endTime) : null;
