@@ -106,6 +106,6 @@ export const groupShiftsByDate = (shifts: ScheduledShift[]): Record<string, Sche
 
 export const sortShiftsByDate = (shifts: ScheduledShift[]): ScheduledShift[] => {
   return [...shifts].sort((a, b) => 
-    new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime()
+    new Date(b.scheduledStartTime).getTime() - new Date(a.scheduledStartTime).getTime()
   );
 };
