@@ -34,6 +34,7 @@ export default function CaregiverDashboard() {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
   const [concurrentShiftWarning, setConcurrentShiftWarning] = useState<{ caregiverName: string; shiftId: string } | null>(null);
   const [totalOwed, setTotalOwed] = useState<number>(0);
+  const [isClockingIn, setIsClockingIn] = useState<boolean>(false);
 
   const calculateTotalOwed = async () => {
     if (!user) return;
@@ -170,23 +171,29 @@ export default function CaregiverDashboard() {
   }, [activeShift]);
 
   const handleClockIn = async () => {
-    if (!user) return;
+    if (!user || isClockingIn) return;
     
-    // Check for concurrent shifts (Smart Handoff) - use async to get real-time Firebase data
-    const activeShiftInfo = await MockService.getAnyActiveShiftAsync();
-    
-    if (activeShiftInfo && activeShiftInfo.shift.caregiverId !== user.id) {
-      // Another caregiver is clocked in - show warning
-      setConcurrentShiftWarning({
-        caregiverName: activeShiftInfo.caregiverName,
-        shiftId: activeShiftInfo.shift.id
-      });
-      return;
+    try {
+      setIsClockingIn(true);
+      
+      // Check for concurrent shifts (Smart Handoff) - use async to get real-time Firebase data
+      const activeShiftInfo = await MockService.getAnyActiveShiftAsync();
+      
+      if (activeShiftInfo && activeShiftInfo.shift.caregiverId !== user.id) {
+        // Another caregiver is clocked in - show warning
+        setConcurrentShiftWarning({
+          caregiverName: activeShiftInfo.caregiverName,
+          shiftId: activeShiftInfo.shift.id
+        });
+        return;
+      }
+      
+      // No concurrent shift from another user - proceed with clock in
+      // This will automatically end any in-progress shift from the same user
+      await proceedWithClockIn();
+    } finally {
+      setIsClockingIn(false);
     }
-    
-    // No concurrent shift from another user - proceed with clock in
-    // This will automatically end any in-progress shift from the same user
-    await proceedWithClockIn();
   };
 
   const proceedWithClockIn = async () => {
@@ -262,13 +269,16 @@ export default function CaregiverDashboard() {
   };
 
   const handleConfirmHandoff = async () => {
-    if (!concurrentShiftWarning || !user) return;
+    if (!concurrentShiftWarning || !user || isClockingIn) return;
     
-    // Store caregiver name before clearing state
-    const previousCaregiverName = concurrentShiftWarning.caregiverName;
-    
-    // Close warning modal first to prevent double-clicks
-    setConcurrentShiftWarning(null);
+    try {
+      setIsClockingIn(true);
+      
+      // Store caregiver name before clearing state
+      const previousCaregiverName = concurrentShiftWarning.caregiverName;
+      
+      // Close warning modal first
+      setConcurrentShiftWarning(null);
     
     // Use centralized method to end any in-progress shift
     await MockService.autoEndActiveShiftAsync();
@@ -334,6 +344,9 @@ export default function CaregiverDashboard() {
       text: `${previousCaregiverName} has been clocked out. Your shift has started.` 
     });
     setTimeout(() => setFeedbackMessage(null), 3000);
+    } finally {
+      setIsClockingIn(false);
+    }
   };
 
   const handleCancelHandoff = () => {
@@ -341,8 +354,11 @@ export default function CaregiverDashboard() {
   };
 
   const handleClockOut = async () => {
-    if (!activeShift) return;
-    const endTime = new Date().toISOString();
+    if (!activeShift || isClockingIn) return;
+    
+    try {
+      setIsClockingIn(true);
+      const endTime = new Date().toISOString();
     const updatedShift = { ...activeShift, endTime, status: 'completed' as const };
     await MockService.saveShift(updatedShift);
     // Update scheduled shift status to completed if applicable
@@ -377,6 +393,9 @@ export default function CaregiverDashboard() {
     });
     
     setActiveShift(undefined);
+    } finally {
+      setIsClockingIn(false);
+    }
   };
 
   const handleClaimShift = (shiftId: string) => {
@@ -537,9 +556,14 @@ export default function CaregiverDashboard() {
               
               <button
                 onClick={handleClockOut}
-                className="w-full h-48 bg-red-500 hover:bg-red-600 text-white text-3xl font-bold rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center"
+                disabled={isClockingIn}
+                className={`w-full h-48 text-white text-3xl font-bold rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center ${
+                  isClockingIn 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
               >
-                End Shift
+                {isClockingIn ? 'Processing...' : 'End Shift'}
               </button>
             </div>
           ) : (
@@ -554,9 +578,14 @@ export default function CaregiverDashboard() {
               
               <button
                 onClick={handleClockIn}
-                className="w-full h-64 bg-green-500 hover:bg-green-600 text-white text-3xl font-bold rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center"
+                disabled={isClockingIn}
+                className={`w-full h-64 text-white text-3xl font-bold rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center ${
+                  isClockingIn 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-500 hover:bg-green-600'
+                }`}
               >
-                Start Shift
+                {isClockingIn ? 'Processing...' : 'Start Shift'}
               </button>
             </div>
           )}</div>
@@ -836,13 +865,23 @@ export default function CaregiverDashboard() {
             <div className="flex gap-3">
               <button
                 onClick={handleConfirmHandoff}
-                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition"
+                disabled={isClockingIn}
+                className={`flex-1 text-white py-3 px-4 rounded-lg font-medium transition ${
+                  isClockingIn 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                Yes, Clock Me In
+                {isClockingIn ? 'Processing...' : 'Yes, Clock Me In'}
               </button>
               <button
                 onClick={handleCancelHandoff}
-                className="flex-1 bg-gray-300 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-400 transition"
+                disabled={isClockingIn}
+                className={`flex-1 text-gray-800 py-3 px-4 rounded-lg font-medium transition ${
+                  isClockingIn 
+                    ? 'bg-gray-200 cursor-not-allowed' 
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
               >
                 Cancel
               </button>
