@@ -17,6 +17,15 @@ import {
   calculateShiftPay
 } from '../../utils/shiftUtils';
 
+type ManualFormState = {
+  caregiverId: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  totalCost: string;
+};
+
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -39,63 +48,68 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [caregiverFilter, setCaregiverFilter] = useState<string>('all');
   
-  // Manual shift form state for Manual Shift Entry
-  const [manualForm, setManualForm] = useState({
-    caregiverId: editingManualShift?.caregiverId || '',
-    startDate: editingManualShift ? (editingManualShift.startTime || '').split('T')[0] : '',
-    startTime: editingManualShift ? (editingManualShift.startTime ? new Date(editingManualShift.startTime).toTimeString().slice(0,5) : '') : '',
-    endDate: editingManualShift && editingManualShift.endTime ? editingManualShift.endTime.split('T')[0] : '',
-    endTime: editingManualShift && editingManualShift.endTime ? new Date(editingManualShift.endTime).toTimeString().slice(0,5) : '',
-    totalCost: editingManualShift ? (
-      editingManualShift.payType === 'perShift' ? (editingManualShift.shiftRate ?? 0).toFixed(2) : calculateShiftPay(editingManualShift).toFixed(2)
-    ) : ''
+  const createEmptyManualForm = () => ({
+    caregiverId: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    totalCost: '',
   });
-  const [manualOverride, setManualOverride] = useState(false);
 
-  useEffect(() => {
-    // when editingManualShift changes populate the manual form
-    if (editingManualShift) {
-      setManualForm({
-        caregiverId: editingManualShift.caregiverId || '',
-        startDate: (editingManualShift.startTime || '').split('T')[0] || '',
-        startTime: editingManualShift.startTime ? new Date(editingManualShift.startTime).toTimeString().slice(0,5) : '',
-        endDate: editingManualShift.endTime ? editingManualShift.endTime.split('T')[0] : '',
-        endTime: editingManualShift.endTime ? new Date(editingManualShift.endTime).toTimeString().slice(0,5) : '',
-        totalCost: editingManualShift.payType === 'perShift' ? (editingManualShift.shiftRate ?? 0).toFixed(2) : calculateShiftPay(editingManualShift).toFixed(2)
-      });
-      setManualOverride(false);
-    } else {
-      setManualForm(prev => ({ ...prev, caregiverId: '', startDate: '', startTime: '', endDate: '', endTime: '', totalCost: '' }));
-      setManualOverride(false);
-    }
-  }, [editingManualShift]);
+  const buildManualFormFromShift = (shift: Shift) => ({
+    caregiverId: shift.caregiverId || '',
+    startDate: (shift.startTime || '').split('T')[0] || '',
+    startTime: shift.startTime ? new Date(shift.startTime).toTimeString().slice(0, 5) : '',
+    endDate: shift.endTime ? shift.endTime.split('T')[0] : '',
+    endTime: shift.endTime ? new Date(shift.endTime).toTimeString().slice(0, 5) : '',
+    totalCost: shift.payType === 'perShift'
+      ? (shift.shiftRate ?? 0).toFixed(2)
+      : calculateShiftPay(shift).toFixed(2),
+  });
 
-  // Recalculate total when inputs change unless user manually edited total
-  useEffect(() => {
-    if (manualOverride) return;
-    const { caregiverId, startDate, startTime, endDate, endTime } = manualForm;
-    if (!caregiverId || !startDate || !startTime || !endDate || !endTime) {
-      setManualForm(prev => ({ ...prev, totalCost: '' }));
-      return;
-    }
-    const caregiver = caregivers.find(c => c.id === caregiverId);
-    if (!caregiver) return;
-    const startIso = new Date(`${startDate}T${startTime}`).toISOString();
-    const endIso = new Date(`${endDate}T${endTime}`).toISOString();
-    const startMs = new Date(startIso).getTime();
-    const endMs = new Date(endIso).getTime();
-    if (isNaN(startMs) || isNaN(endMs) || endMs <= startMs) {
-      setManualForm(prev => ({ ...prev, totalCost: '' }));
-      return;
-    }
+  // Manual shift form state for Manual Shift Entry
+  const [manualForm, setManualForm] = useState(createEmptyManualForm());
+
+  const resetManualForm = () => {
+    setManualForm(createEmptyManualForm());
+  };
+
+  const populateManualForm = (shift: Shift) => {
+    setManualForm(buildManualFormFromShift(shift));
+  };
+
+  const computeManualTotal = (form: ManualFormState, caregiverList: User[]) => {
+    const { caregiverId, startDate, startTime, endDate, endTime } = form;
+    if (!caregiverId || !startDate || !startTime || !endDate || !endTime) return '';
+
+    const caregiver = caregiverList.find((c) => c.id === caregiverId);
+    if (!caregiver) return '';
+
+    const startMs = new Date(`${startDate}T${startTime}`).getTime();
+    const endMs = new Date(`${endDate}T${endTime}`).getTime();
+
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return '';
+
     if (caregiver.payType === 'perShift') {
-      setManualForm(prev => ({ ...prev, totalCost: ((caregiver.shiftRate ?? 0)).toFixed(2) }));
-    } else {
-      const hours = (endMs - startMs) / (1000 * 60 * 60);
-      const cost = (caregiver.hourlyRate || 0) * hours;
-      setManualForm(prev => ({ ...prev, totalCost: cost.toFixed(2) }));
+      return (caregiver.shiftRate ?? 0).toFixed(2);
     }
-  }, [manualForm.caregiverId, manualForm.startDate, manualForm.startTime, manualForm.endDate, manualForm.endTime, caregivers, manualOverride]);
+
+    const hours = (endMs - startMs) / (1000 * 60 * 60);
+    return ((caregiver.hourlyRate || 0) * hours).toFixed(2);
+  };
+
+  const handleManualFieldChange = (field: keyof ManualFormState, value: string) => {
+    setManualForm((prev) => {
+      const next = { ...prev, [field]: value } as ManualFormState;
+      const totalCost = computeManualTotal(next, caregivers);
+      return { ...next, totalCost };
+    });
+  };
+
+  const handleManualTotalChange = (value: string) => {
+    setManualForm((prev) => ({ ...prev, totalCost: value }));
+  };
 
   const refreshData = useCallback(async () => {
     const allUsers = await MockService.getUsersAsync();
@@ -184,6 +198,7 @@ export default function AdminDashboard() {
 
   const handleEditShift = (shift: Shift) => {
     setEditingManualShift(shift);
+    populateManualForm(shift);
   };
 
   const handleUpdateShift = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -210,7 +225,13 @@ export default function AdminDashboard() {
       shiftRate: totalCost,
     });
     setEditingManualShift(null);
+    resetManualForm();
     refreshData();
+  };
+
+  const handleCancelManualShift = () => {
+    setEditingManualShift(null);
+    resetManualForm();
   };
 
   const handleAddCaregiver = (e: React.FormEvent<HTMLFormElement>) => {
@@ -434,7 +455,11 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-bold text-gray-900 mb-4">
                   {editingShift ? 'Edit Shift' : 'Publish Open Shift'}
                 </h3>
-                <form onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift} className="space-y-4">
+                <form
+                  key={editingShift?.id || 'new-scheduled-shift'}
+                  onSubmit={editingShift ? handleUpdateScheduledShift : handleCreateScheduledShift}
+                  className="space-y-4"
+                >
                 {/* Row 1: Start Date and Start Time */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-3">
                   <div className="col-span-2 md:col-span-1">
@@ -443,7 +468,7 @@ export default function AdminDashboard() {
                       name="startDate" 
                       type="date" 
                       required 
-                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="w-full min-w-[140px] md:min-w-[160px] border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       min={new Date().toISOString().split('T')[0]}
                       defaultValue={editingShift ? editingShift.date : ''}
                     />
@@ -454,7 +479,7 @@ export default function AdminDashboard() {
                       name="startTime" 
                       type="time" 
                       required 
-                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
+                      className="w-full min-w-[120px] md:min-w-[140px] border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
                       placeholder="Start Time"
                       defaultValue={editingShift ? new Date(editingShift.scheduledStartTime).toTimeString().slice(0, 5) : ''}
                     />
@@ -469,7 +494,7 @@ export default function AdminDashboard() {
                       name="endDate" 
                       type="date" 
                       required 
-                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="w-full min-w-[140px] md:min-w-[160px] border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toISOString().split('T')[0] : ''}
                     />
                   </div>
@@ -479,7 +504,7 @@ export default function AdminDashboard() {
                       name="endTime" 
                       type="time" 
                       required 
-                      className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
+                      className="w-full min-w-[120px] md:min-w-[140px] border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
                       placeholder="End Time"
                       defaultValue={editingShift ? new Date(editingShift.scheduledEndTime).toTimeString().slice(0, 5) : ''}
                     />
@@ -817,14 +842,13 @@ export default function AdminDashboard() {
                 };
                 await MockService.saveShift(newShift);
                 refreshData();
-                setManualForm({ caregiverId: '', startDate: '', startTime: '', endDate: '', endTime: '', totalCost: '' });
-                setManualOverride(false);
+                resetManualForm();
               }} className="space-y-4">
                 {/* Row 1: Caregiver */}
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Select Caregiver</label>
-                    <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.caregiverId} onChange={(e) => { setManualForm(prev => ({ ...prev, caregiverId: e.target.value })); setManualOverride(false); }}>
+                    <select name="caregiverId" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.caregiverId} onChange={(e) => handleManualFieldChange('caregiverId', e.target.value)}>
                       <option value="">Select Caregiver</option>
                       {caregivers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -835,11 +859,11 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
-                    <input name="startDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.startDate} onChange={(e) => { setManualForm(prev => ({ ...prev, startDate: e.target.value })); setManualOverride(false); }} />
+                    <input name="startDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.startDate} onChange={(e) => handleManualFieldChange('startDate', e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Start Time</label>
-                    <input name="startTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.startTime} onChange={(e) => { setManualForm(prev => ({ ...prev, startTime: e.target.value })); setManualOverride(false); }} />
+                    <input name="startTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.startTime} onChange={(e) => handleManualFieldChange('startTime', e.target.value)} />
                   </div>
                 </div>
 
@@ -847,11 +871,11 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
-                    <input name="endDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.endDate} onChange={(e) => { setManualForm(prev => ({ ...prev, endDate: e.target.value })); setManualOverride(false); }} />
+                    <input name="endDate" type="date" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.endDate} onChange={(e) => handleManualFieldChange('endDate', e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">End Time</label>
-                    <input name="endTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.endTime} onChange={(e) => { setManualForm(prev => ({ ...prev, endTime: e.target.value })); setManualOverride(false); }} />
+                    <input name="endTime" type="time" required className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={manualForm.endTime} onChange={(e) => handleManualFieldChange('endTime', e.target.value)} />
                   </div>
                 </div>
 
@@ -867,7 +891,7 @@ export default function AdminDashboard() {
                       required
                       className="w-full border-2 border-gray-300 bg-white text-gray-900 p-3 rounded text-sm md:text-base focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       value={manualForm.totalCost}
-                      onChange={(e) => { setManualForm(prev => ({ ...prev, totalCost: e.target.value })); setManualOverride(true); }}
+                      onChange={(e) => handleManualTotalChange(e.target.value)}
                     />
                   </div>
                 </div>
@@ -880,7 +904,7 @@ export default function AdminDashboard() {
                   {editingManualShift && (
                     <button 
                       type="button"
-                      onClick={() => setEditingManualShift(null)}
+                      onClick={handleCancelManualShift}
                       className="flex-1 md:flex-initial bg-gray-400 text-white font-semibold p-3 rounded hover:bg-gray-500 text-sm md:text-base"
                     >
                       Cancel
