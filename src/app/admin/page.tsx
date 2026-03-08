@@ -44,6 +44,11 @@ export default function AdminDashboard() {
   const [editingManualShift, setEditingManualShift] = useState<Shift | null>(null);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
   
+  // Confirmation Modal State
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  
   // Shift History Filter States
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [caregiverFilter, setCaregiverFilter] = useState<string>('all');
@@ -174,8 +179,8 @@ export default function AdminDashboard() {
   const handleBulkMarkPaid = async (shiftIds: string[]) => {
     if (shiftIds.length === 0) return;
     
-    const confirmMessage = `Are you sure you want to mark ${shiftIds.length} shift(s) as paid?`;
-    if (confirm(confirmMessage)) {
+    const message = `Are you sure you want to mark ${shiftIds.length} shift(s) as paid?`;
+    const action = async () => {
       // Process all shifts in parallel for better performance
       await Promise.all(
         shiftIds.map(async (shiftId) => {
@@ -186,14 +191,23 @@ export default function AdminDashboard() {
         })
       );
       refreshData();
-    }
+    };
+    
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
   };
 
   const handleDeleteShift = async (shiftId: string) => {
-    if (confirm('Are you sure you want to delete this shift?')) {
+    const message = 'Are you sure you want to delete this shift?';
+    const action = async () => {
       await MockService.deleteShift(shiftId);
       refreshData();
-    }
+    };
+    
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
   };
 
   const handleEditShift = (shift: Shift) => {
@@ -285,10 +299,15 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteScheduledShift = (shiftId: string) => {
-    if (confirm('Are you sure you want to delete this shift?')) {
+    const message = 'Are you sure you want to delete this shift?';
+    const action = () => {
       MockService.deleteScheduledShift(shiftId);
       refreshData();
-    }
+    };
+    
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
   };
 
   const handleUpdateScheduledShift = (e: React.FormEvent<HTMLFormElement>) => {
@@ -331,10 +350,15 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteCaregiver = (caregiverId: string) => {
-    if (confirm('Are you sure you want to delete this caregiver? This action cannot be undone.')) {
+    const message = 'Are you sure you want to delete this caregiver? This action cannot be undone.';
+    const action = () => {
       MockService.deleteUser(caregiverId);
       refreshData();
-    }
+    };
+    
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
   };
 
   const handleUpdateCredentials = (userId: string, updates: { email?: string; password?: string; phone?: string; pin?: string }) => {
@@ -1221,6 +1245,39 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Confirm Action</h2>
+            <p className="text-gray-700 mb-6">{confirmMessage}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (confirmAction) confirmAction();
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                  setConfirmMessage('');
+                }}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 font-medium"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                  setConfirmMessage('');
+                }}
+                className="flex-1 bg-gray-400 text-white py-2 px-4 rounded-md hover:bg-gray-500 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
